@@ -1,0 +1,8 @@
+package com.digitalsignage.admin.common.enums;
+
+public enum ScreenStatus {
+    ONLINE,
+    SUSPECT,
+    OFFLINE,
+    ERROR
+}
