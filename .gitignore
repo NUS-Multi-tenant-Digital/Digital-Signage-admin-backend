@@ -26,3 +26,7 @@ Thumbs.db
 *.log
 .env
 .env.local
+
+# 本地审批 / 变更记录（不入库，合并 main 时不带入）
+PLAN.MD
+LOCAL_MODIFIED_FILES.md
