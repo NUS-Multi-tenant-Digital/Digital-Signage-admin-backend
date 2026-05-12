@@ -7,6 +7,7 @@ import com.digitalsignage.admin.layout.dto.LayoutRegionRequest;
 import com.digitalsignage.admin.layout.dto.LayoutRegionResponse;
 import com.digitalsignage.admin.layout.dto.LayoutResponse;
 import com.digitalsignage.admin.layout.dto.LayoutTemplateResponse;
+import com.digitalsignage.admin.layout.dto.LayoutTemplateSkeletonResponse;
 import com.digitalsignage.admin.layout.dto.UpdateLayoutRequest;
 import com.digitalsignage.admin.layout.service.LayoutService;
 import com.digitalsignage.admin.security.JwtService;
@@ -80,6 +81,32 @@ class LayoutControllerTest {
                                 .build()
                 ))
                 .build();
+    }
+
+    @Test
+    void getTemplateSkeleton_returnsOk() throws Exception {
+        LayoutRegionRequest region = new LayoutRegionRequest();
+        region.setRegionName("main");
+        region.setX(0);
+        region.setY(0);
+        region.setWidth(1920);
+        region.setHeight(1080);
+        region.setZIndex(1);
+        region.setComponentType("PLAYLIST");
+        region.setConfigJson("{}");
+        LayoutTemplateSkeletonResponse skeleton = LayoutTemplateSkeletonResponse.builder()
+                .templateType("SINGLE_FULL")
+                .resolutionWidth(1920)
+                .resolutionHeight(1080)
+                .regions(List.of(region))
+                .build();
+        when(layoutService.getTemplateSkeleton(eq("SINGLE_FULL"), eq(1920), eq(1080))).thenReturn(skeleton);
+
+        mockMvc.perform(get("/api/admin/layout-templates/SINGLE_FULL/skeleton"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.code").value(200))
+                .andExpect(jsonPath("$.data.templateType").value("SINGLE_FULL"))
+                .andExpect(jsonPath("$.data.regions[0].regionName").value("main"));
     }
 
     @Test

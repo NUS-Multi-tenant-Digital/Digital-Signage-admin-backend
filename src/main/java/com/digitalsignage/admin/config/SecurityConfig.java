@@ -1,7 +1,10 @@
 package com.digitalsignage.admin.config;
 
+import com.digitalsignage.admin.security.DeviceAuthenticationFilter;
 import com.digitalsignage.admin.security.JwtAuthenticationFilter;
 import lombok.RequiredArgsConstructor;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.http.HttpMethod;
@@ -21,6 +24,12 @@ public class SecurityConfig {
     private final RestAuthenticationEntryPoint authenticationEntryPoint;
     private final RestAccessDeniedHandler accessDeniedHandler;
 
+    @Autowired(required = false)
+    private DeviceAuthenticationFilter deviceAuthenticationFilter;
+
+    @Value("${app.api.device-prefix}")
+    private String devicePrefix;
+
     @Bean
     public SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
         http
@@ -31,6 +40,8 @@ public class SecurityConfig {
                         .authenticationEntryPoint(authenticationEntryPoint)
                         .accessDeniedHandler(accessDeniedHandler))
                 .authorizeHttpRequests(auth -> auth
+                        .requestMatchers("/ws/**").permitAll()
+                        .requestMatchers(HttpMethod.POST, devicePrefix + "/activate").permitAll()
                         .requestMatchers("/api/admin/auth/login", "/api/admin/auth/refresh").permitAll()
                         .requestMatchers(HttpMethod.GET, "/api/admin/users/me").authenticated()
                         .requestMatchers(HttpMethod.GET, "/api/admin/users").hasAnyRole("ADMIN", "EDITOR", "VIEWER")
@@ -46,6 +57,9 @@ public class SecurityConfig {
                 .httpBasic(AbstractHttpConfigurer::disable)
                 .formLogin(AbstractHttpConfigurer::disable)
                 .addFilterBefore(jwtAuthenticationFilter, UsernamePasswordAuthenticationFilter.class);
+        if (deviceAuthenticationFilter != null) {
+            http.addFilterAfter(deviceAuthenticationFilter, JwtAuthenticationFilter.class);
+        }
         return http.build();
     }
 

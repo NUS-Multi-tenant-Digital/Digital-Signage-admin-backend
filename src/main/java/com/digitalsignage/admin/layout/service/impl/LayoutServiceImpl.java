@@ -9,11 +9,14 @@ import com.digitalsignage.admin.layout.dto.LayoutRegionRequest;
 import com.digitalsignage.admin.layout.dto.LayoutRegionResponse;
 import com.digitalsignage.admin.layout.dto.LayoutResponse;
 import com.digitalsignage.admin.layout.dto.LayoutTemplateResponse;
+import com.digitalsignage.admin.layout.dto.LayoutTemplateSkeletonResponse;
 import com.digitalsignage.admin.layout.dto.UpdateLayoutRequest;
 import com.digitalsignage.admin.layout.repository.LayoutRegionRepository;
 import com.digitalsignage.admin.layout.repository.LayoutRepository;
 import com.digitalsignage.admin.layout.service.LayoutService;
+import com.digitalsignage.admin.schedule.repository.ScheduleRepository;
 import com.digitalsignage.admin.security.AdminPrincipal;
+import com.digitalsignage.admin.websocket.ConfigPushService;
 import com.digitalsignage.admin.user.repository.OrganizationRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.security.core.Authentication;
@@ -22,11 +25,17 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.util.StringUtils;
 
+import java.util.ArrayList;
 import java.util.List;
 
 @Service
 @RequiredArgsConstructor
 public class LayoutServiceImpl implements LayoutService {
+
+    private static final int DESIGN_BASE_WIDTH = 1920;
+    private static final int DESIGN_BASE_HEIGHT = 1080;
+    private static final String DEFAULT_COMPONENT_TYPE = "PLAYLIST";
+    private static final String EMPTY_REGION_CONFIG_JSON = "{}";
 
     private static final List<LayoutTemplateResponse> TEMPLATE_RESPONSES = List.of(
             LayoutTemplateResponse.builder().templateType("SINGLE_FULL").displayName("Single Full").build(),
@@ -38,11 +47,84 @@ public class LayoutServiceImpl implements LayoutService {
     private final LayoutRepository layoutRepository;
     private final LayoutRegionRepository layoutRegionRepository;
     private final OrganizationRepository organizationRepository;
+    private final ScheduleRepository scheduleRepository;
+    private final ConfigPushService configPushService;
 
     @Override
     @Transactional(readOnly = true)
     public List<LayoutTemplateResponse> listTemplates() {
         return TEMPLATE_RESPONSES;
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public LayoutTemplateSkeletonResponse getTemplateSkeleton(
+            String templateType, int resolutionWidth, int resolutionHeight) {
+        if (resolutionWidth <= 0 || resolutionHeight <= 0) {
+            throw new BusinessException(400, "resolution width and height must be positive");
+        }
+        String type = templateType == null ? "" : templateType.trim().toUpperCase();
+        List<LayoutRegionRequest> baseRegions = baseRegionsForTemplate(type);
+        double scaleX = resolutionWidth / (double) DESIGN_BASE_WIDTH;
+        double scaleY = resolutionHeight / (double) DESIGN_BASE_HEIGHT;
+        List<LayoutRegionRequest> scaled = new ArrayList<>(baseRegions.size());
+        for (LayoutRegionRequest r : baseRegions) {
+            scaled.add(scaleRegion(r, scaleX, scaleY));
+        }
+        return LayoutTemplateSkeletonResponse.builder()
+                .templateType(type)
+                .resolutionWidth(resolutionWidth)
+                .resolutionHeight(resolutionHeight)
+                .regions(List.copyOf(scaled))
+                .build();
+    }
+
+    private static List<LayoutRegionRequest> baseRegionsForTemplate(String templateType) {
+        return switch (templateType) {
+            case "SINGLE_FULL" -> List.of(region("main", 0, 0, DESIGN_BASE_WIDTH, DESIGN_BASE_HEIGHT, 1));
+            case "TOP_BOTTOM" -> List.of(
+                    region("top", 0, 0, DESIGN_BASE_WIDTH, DESIGN_BASE_HEIGHT / 2, 1),
+                    region("bottom", 0, DESIGN_BASE_HEIGHT / 2, DESIGN_BASE_WIDTH, DESIGN_BASE_HEIGHT / 2, 2));
+            case "LEFT_RIGHT" -> List.of(
+                    region("left", 0, 0, DESIGN_BASE_WIDTH / 2, DESIGN_BASE_HEIGHT, 1),
+                    region("right", DESIGN_BASE_WIDTH / 2, 0, DESIGN_BASE_WIDTH / 2, DESIGN_BASE_HEIGHT, 2));
+            case "MAIN_SIDEBAR" -> List.of(
+                    region("main", 0, 0, (int) Math.round(DESIGN_BASE_WIDTH * 0.7), DESIGN_BASE_HEIGHT, 1),
+                    region(
+                            "sidebar",
+                            (int) Math.round(DESIGN_BASE_WIDTH * 0.7),
+                            0,
+                            (int) Math.round(DESIGN_BASE_WIDTH * 0.3),
+                            DESIGN_BASE_HEIGHT,
+                            2));
+            default -> throw new BusinessException(404, "unknown layout template type");
+        };
+    }
+
+    private static LayoutRegionRequest region(String name, int x, int y, int width, int height, int zIndex) {
+        LayoutRegionRequest r = new LayoutRegionRequest();
+        r.setRegionName(name);
+        r.setX(x);
+        r.setY(y);
+        r.setWidth(width);
+        r.setHeight(height);
+        r.setZIndex(zIndex);
+        r.setComponentType(DEFAULT_COMPONENT_TYPE);
+        r.setConfigJson(EMPTY_REGION_CONFIG_JSON);
+        return r;
+    }
+
+    private static LayoutRegionRequest scaleRegion(LayoutRegionRequest source, double scaleX, double scaleY) {
+        LayoutRegionRequest r = new LayoutRegionRequest();
+        r.setRegionName(source.getRegionName());
+        r.setX((int) Math.round(source.getX() * scaleX));
+        r.setY((int) Math.round(source.getY() * scaleY));
+        r.setWidth((int) Math.round(source.getWidth() * scaleX));
+        r.setHeight((int) Math.round(source.getHeight() * scaleY));
+        r.setZIndex(source.getZIndex());
+        r.setComponentType(source.getComponentType());
+        r.setConfigJson(source.getConfigJson());
+        return r;
     }
 
     @Override
@@ -85,6 +167,7 @@ public class LayoutServiceImpl implements LayoutService {
 
         Layout foundLayout = layoutRepository.findByIdAndOrganization_Id(savedLayout.getId(), organizationId)
                 .orElseThrow(() -> new BusinessException(404, "layout not found"));
+        configPushService.notifyLayoutChanged(foundLayout.getId());
         return toResponse(foundLayout);
     }
 
@@ -119,6 +202,7 @@ public class LayoutServiceImpl implements LayoutService {
 
         Layout foundLayout = layoutRepository.findByIdAndOrganization_Id(savedLayout.getId(), organizationId)
                 .orElseThrow(() -> new BusinessException(404, "layout not found"));
+        configPushService.notifyLayoutChanged(foundLayout.getId());
         return toResponse(foundLayout);
     }
 
@@ -128,6 +212,9 @@ public class LayoutServiceImpl implements LayoutService {
         Long organizationId = currentPrincipal().getOrganizationId();
         Layout layout = layoutRepository.findByIdAndOrganization_Id(id, organizationId)
                 .orElseThrow(() -> new BusinessException(404, "layout not found"));
+        if (scheduleRepository.existsByLayout_Id(layout.getId())) {
+            throw new BusinessException(409, "layout is referenced by schedules");
+        }
         layoutRegionRepository.deleteByLayout_Id(layout.getId());
         layoutRepository.delete(layout);
     }

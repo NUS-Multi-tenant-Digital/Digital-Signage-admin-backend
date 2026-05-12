@@ -4,6 +4,7 @@ import com.digitalsignage.admin.common.api.ApiResponse;
 import com.digitalsignage.admin.layout.dto.CreateLayoutRequest;
 import com.digitalsignage.admin.layout.dto.LayoutResponse;
 import com.digitalsignage.admin.layout.dto.LayoutTemplateResponse;
+import com.digitalsignage.admin.layout.dto.LayoutTemplateSkeletonResponse;
 import com.digitalsignage.admin.layout.dto.UpdateLayoutRequest;
 import com.digitalsignage.admin.layout.service.LayoutService;
 import jakarta.validation.Valid;
@@ -15,6 +16,7 @@ import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
 import java.util.List;
@@ -29,6 +31,14 @@ public class LayoutController {
     @GetMapping("/layout-templates")
     public ApiResponse<List<LayoutTemplateResponse>> listTemplates() {
         return ApiResponse.ok(layoutService.listTemplates());
+    }
+
+    @GetMapping("/layout-templates/{templateType}/skeleton")
+    public ApiResponse<LayoutTemplateSkeletonResponse> getTemplateSkeleton(
+            @PathVariable String templateType,
+            @RequestParam(defaultValue = "1920") int width,
+            @RequestParam(defaultValue = "1080") int height) {
+        return ApiResponse.ok(layoutService.getTemplateSkeleton(templateType, width, height));
     }
 
     @GetMapping("/layouts")

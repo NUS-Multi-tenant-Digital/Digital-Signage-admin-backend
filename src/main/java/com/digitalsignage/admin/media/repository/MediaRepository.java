@@ -17,5 +17,7 @@ public interface MediaRepository extends JpaRepository<Media, Long> {
     @Query("SELECT m FROM Media m JOIN FETCH m.organization WHERE m.id = :id AND m.organization.id = :orgId")
     Optional<Media> findByIdAndOrganizationId(@Param("id") Long id, @Param("orgId") Long orgId);
 
+    Optional<Media> findByIdAndOrganization_Id(Long id, Long organizationId);
+
     boolean existsByOrganization_IdAndObjectKey(Long organizationId, String objectKey);
 }

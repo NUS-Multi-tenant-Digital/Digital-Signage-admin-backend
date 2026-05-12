@@ -9,6 +9,7 @@ import com.digitalsignage.admin.layout.dto.LayoutRegionRequest;
 import com.digitalsignage.admin.layout.dto.UpdateLayoutRequest;
 import com.digitalsignage.admin.layout.repository.LayoutRegionRepository;
 import com.digitalsignage.admin.layout.repository.LayoutRepository;
+import com.digitalsignage.admin.screen.repository.ScreenRepository;
 import com.digitalsignage.admin.security.AdminPrincipal;
 import com.digitalsignage.admin.security.JwtService;
 import com.digitalsignage.admin.user.repository.OrganizationRepository;
@@ -55,6 +56,9 @@ class LayoutApiIntegrationTest {
     @Autowired
     private LayoutRegionRepository layoutRegionRepository;
 
+    @Autowired
+    private ScreenRepository screenRepository;
+
     @MockBean
     private JwtService jwtService;
 
@@ -62,6 +66,7 @@ class LayoutApiIntegrationTest {
     void setUp() {
         layoutRegionRepository.deleteAll();
         layoutRepository.deleteAll();
+        screenRepository.deleteAll();
         organizationRepository.deleteAll();
 
         Organization organization = new Organization();
