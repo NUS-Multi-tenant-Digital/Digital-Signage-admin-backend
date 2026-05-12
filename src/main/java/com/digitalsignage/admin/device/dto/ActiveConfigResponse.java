@@ -39,8 +39,16 @@ public class ActiveConfigResponse {
         private Integer width;
         private Integer height;
         private Integer zIndex;
+        private List<RegionComponentPayload> components;
+    }
+
+    @Getter
+    @Builder
+    public static class RegionComponentPayload {
+        private Long id;
         private String componentType;
         private String configJson;
+        private Integer sortOrder;
     }
 
     @Getter

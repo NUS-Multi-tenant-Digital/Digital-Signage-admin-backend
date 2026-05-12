@@ -4,7 +4,6 @@ import com.digitalsignage.admin.common.exception.GlobalExceptionHandler;
 import com.digitalsignage.admin.device.dto.ActiveConfigResponse;
 import com.digitalsignage.admin.device.dto.DeviceActivateRequest;
 import com.digitalsignage.admin.device.dto.DeviceActivateResponse;
-import com.digitalsignage.admin.device.dto.DeviceHeartbeatRequest;
 import com.digitalsignage.admin.device.dto.PlaybackLogSubmitRequest;
 import com.digitalsignage.admin.device.service.DeviceService;
 import com.digitalsignage.admin.security.JwtService;
@@ -24,7 +23,6 @@ import java.util.List;
 
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.doNothing;
-import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
@@ -74,30 +72,6 @@ class DeviceControllerTest {
         mockMvc.perform(get("/api/device/active-config"))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.data.scheduleId").value(1));
-    }
-
-    @Test
-    void heartbeat_returnsOk() throws Exception {
-        doNothing().when(deviceService).heartbeat(any(DeviceHeartbeatRequest.class));
-
-        DeviceHeartbeatRequest req = new DeviceHeartbeatRequest();
-        req.setRuntimeHealthy(true);
-
-        mockMvc.perform(post("/api/device/heartbeat")
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content(objectMapper.writeValueAsString(req)))
-                .andExpect(status().isOk())
-                .andExpect(jsonPath("$.code").value(200));
-        verify(deviceService).heartbeat(any(DeviceHeartbeatRequest.class));
-    }
-
-    @Test
-    void heartbeat_emptyBody_ok() throws Exception {
-        doNothing().when(deviceService).heartbeat(any(DeviceHeartbeatRequest.class));
-
-        mockMvc.perform(post("/api/device/heartbeat")
-                        .contentType(MediaType.APPLICATION_JSON))
-                .andExpect(status().isOk());
     }
 
     @Test

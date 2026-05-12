@@ -4,10 +4,12 @@ import com.digitalsignage.admin.common.enums.ScheduleStatus;
 import com.digitalsignage.admin.device.dto.ActiveConfigResponse;
 import com.digitalsignage.admin.entity.Layout;
 import com.digitalsignage.admin.entity.LayoutRegion;
+import com.digitalsignage.admin.entity.LayoutRegionComponent;
 import com.digitalsignage.admin.entity.Media;
 import com.digitalsignage.admin.entity.PlaylistItem;
 import com.digitalsignage.admin.entity.Schedule;
 import com.digitalsignage.admin.entity.Screen;
+import com.digitalsignage.admin.layout.repository.LayoutRegionComponentRepository;
 import com.digitalsignage.admin.layout.repository.LayoutRegionRepository;
 import com.digitalsignage.admin.playlist.repository.PlaylistItemRepository;
 import com.digitalsignage.admin.schedule.repository.ScheduleRepository;
@@ -17,7 +19,9 @@ import org.springframework.stereotype.Service;
 import java.time.LocalDateTime;
 import java.util.Comparator;
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
+import java.util.stream.Collectors;
 
 @Service
 @RequiredArgsConstructor
@@ -25,6 +29,7 @@ public class ActiveConfigService {
 
     private final ScheduleRepository scheduleRepository;
     private final LayoutRegionRepository layoutRegionRepository;
+    private final LayoutRegionComponentRepository layoutRegionComponentRepository;
     private final PlaylistItemRepository playlistItemRepository;
 
     public Optional<ActiveConfigResponse> resolve(Screen screen, LocalDateTime at) {
@@ -65,18 +70,41 @@ public class ActiveConfigService {
     }
 
     private ActiveConfigResponse.LayoutPayload toLayoutPayload(Layout layout, List<LayoutRegion> regions) {
+        Map<Long, List<LayoutRegionComponent>> byRegionId = Map.of();
+        if (!regions.isEmpty()) {
+            List<Long> regionIds = regions.stream().map(LayoutRegion::getId).toList();
+            List<LayoutRegionComponent> all =
+                    layoutRegionComponentRepository.findByRegion_IdIn(regionIds);
+            byRegionId = all.stream().collect(Collectors.groupingBy(c -> c.getRegion().getId()));
+            byRegionId.replaceAll((id, list) -> list.stream()
+                    .sorted(Comparator.comparing(LayoutRegionComponent::getSortOrder).thenComparing(LayoutRegionComponent::getId))
+                    .toList());
+        }
+
+        Map<Long, List<LayoutRegionComponent>> componentsByRegion = byRegionId;
         List<ActiveConfigResponse.RegionPayload> regionPayloads = regions.stream()
-                .map(r -> ActiveConfigResponse.RegionPayload.builder()
-                        .id(r.getId())
-                        .regionName(r.getRegionName())
-                        .x(r.getX())
-                        .y(r.getY())
-                        .width(r.getWidth())
-                        .height(r.getHeight())
-                        .zIndex(r.getZIndex())
-                        .componentType(r.getComponentType())
-                        .configJson(r.getConfigJson())
-                        .build())
+                .map(r -> {
+                    List<ActiveConfigResponse.RegionComponentPayload> comps = componentsByRegion
+                            .getOrDefault(r.getId(), List.of())
+                            .stream()
+                            .map(c -> ActiveConfigResponse.RegionComponentPayload.builder()
+                                    .id(c.getId())
+                                    .componentType(c.getComponentType())
+                                    .configJson(c.getConfigJson())
+                                    .sortOrder(c.getSortOrder())
+                                    .build())
+                            .toList();
+                    return ActiveConfigResponse.RegionPayload.builder()
+                            .id(r.getId())
+                            .regionName(r.getRegionName())
+                            .x(r.getX())
+                            .y(r.getY())
+                            .width(r.getWidth())
+                            .height(r.getHeight())
+                            .zIndex(r.getZIndex())
+                            .components(comps)
+                            .build();
+                })
                 .toList();
         return ActiveConfigResponse.LayoutPayload.builder()
                 .id(layout.getId())

@@ -3,6 +3,8 @@ package com.digitalsignage.admin.layout.controller;
 import com.digitalsignage.admin.common.enums.LayoutStatus;
 import com.digitalsignage.admin.common.exception.GlobalExceptionHandler;
 import com.digitalsignage.admin.layout.dto.CreateLayoutRequest;
+import com.digitalsignage.admin.layout.dto.LayoutRegionComponentRequest;
+import com.digitalsignage.admin.layout.dto.LayoutRegionComponentResponse;
 import com.digitalsignage.admin.layout.dto.LayoutRegionRequest;
 import com.digitalsignage.admin.layout.dto.LayoutRegionResponse;
 import com.digitalsignage.admin.layout.dto.LayoutResponse;
@@ -76,8 +78,14 @@ class LayoutControllerTest {
                                 .width(1920)
                                 .height(1080)
                                 .zIndex(1)
-                                .componentType("PLAYLIST")
-                                .configJson("{\"playlistId\":1}")
+                                .components(List.of(
+                                        LayoutRegionComponentResponse.builder()
+                                                .id(10L)
+                                                .componentType("PLAYLIST")
+                                                .configJson("{\"playlistId\":1}")
+                                                .sortOrder(0)
+                                                .build()
+                                ))
                                 .build()
                 ))
                 .build();
@@ -92,8 +100,11 @@ class LayoutControllerTest {
         region.setWidth(1920);
         region.setHeight(1080);
         region.setZIndex(1);
-        region.setComponentType("PLAYLIST");
-        region.setConfigJson("{}");
+        LayoutRegionComponentRequest comp = new LayoutRegionComponentRequest();
+        comp.setComponentType("PLAYLIST");
+        comp.setConfigJson("{}");
+        comp.setSortOrder(0);
+        region.setComponents(List.of(comp));
         LayoutTemplateSkeletonResponse skeleton = LayoutTemplateSkeletonResponse.builder()
                 .templateType("SINGLE_FULL")
                 .resolutionWidth(1920)
@@ -202,6 +213,10 @@ class LayoutControllerTest {
     }
 
     private static LayoutRegionRequest sampleRegionRequest() {
+        LayoutRegionComponentRequest comp = new LayoutRegionComponentRequest();
+        comp.setComponentType("PLAYLIST");
+        comp.setConfigJson("{\"playlistId\":1}");
+        comp.setSortOrder(0);
         LayoutRegionRequest region = new LayoutRegionRequest();
         region.setRegionName("main");
         region.setX(0);
@@ -209,8 +224,7 @@ class LayoutControllerTest {
         region.setWidth(1920);
         region.setHeight(1080);
         region.setZIndex(1);
-        region.setComponentType("PLAYLIST");
-        region.setConfigJson("{\"playlistId\":1}");
+        region.setComponents(List.of(comp));
         return region;
     }
 }

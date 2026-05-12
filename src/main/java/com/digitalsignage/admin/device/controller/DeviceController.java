@@ -4,7 +4,6 @@ import com.digitalsignage.admin.common.api.ApiResponse;
 import com.digitalsignage.admin.device.dto.ActiveConfigResponse;
 import com.digitalsignage.admin.device.dto.DeviceActivateRequest;
 import com.digitalsignage.admin.device.dto.DeviceActivateResponse;
-import com.digitalsignage.admin.device.dto.DeviceHeartbeatRequest;
 import com.digitalsignage.admin.device.dto.PlaybackLogSubmitRequest;
 import com.digitalsignage.admin.device.service.DeviceService;
 import jakarta.validation.Valid;
@@ -30,12 +29,6 @@ public class DeviceController {
     @GetMapping("/active-config")
     public ApiResponse<ActiveConfigResponse> activeConfig() {
         return ApiResponse.ok(deviceService.getActiveConfig());
-    }
-
-    @PostMapping("/heartbeat")
-    public ApiResponse<Void> heartbeat(@RequestBody(required = false) DeviceHeartbeatRequest request) {
-        deviceService.heartbeat(request != null ? request : new DeviceHeartbeatRequest());
-        return ApiResponse.ok();
     }
 
     @PostMapping("/playback-logs")

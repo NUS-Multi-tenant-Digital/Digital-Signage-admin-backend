@@ -11,7 +11,6 @@ import com.digitalsignage.admin.media.repository.MediaRepository;
 import com.digitalsignage.admin.playlist.repository.PlaylistRepository;
 import com.digitalsignage.admin.schedule.repository.ScheduleRepository;
 import com.digitalsignage.admin.screen.repository.ScreenRepository;
-import com.digitalsignage.admin.websocket.DevicePresenceService;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
@@ -46,9 +45,6 @@ class DeviceServiceImplTest {
 
     @Mock
     private PlaybackLogRepository playbackLogRepository;
-
-    @Mock
-    private DevicePresenceService devicePresenceService;
 
     @InjectMocks
     private DeviceServiceImpl deviceService;
