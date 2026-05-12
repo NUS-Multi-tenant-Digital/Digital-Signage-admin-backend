@@ -3,14 +3,17 @@ package com.digitalsignage.admin.layout.service.impl;
 import com.digitalsignage.admin.common.exception.BusinessException;
 import com.digitalsignage.admin.entity.Layout;
 import com.digitalsignage.admin.entity.LayoutRegion;
+import com.digitalsignage.admin.entity.LayoutRegionComponent;
 import com.digitalsignage.admin.entity.Organization;
 import com.digitalsignage.admin.layout.dto.CreateLayoutRequest;
+import com.digitalsignage.admin.layout.dto.LayoutRegionComponentRequest;
 import com.digitalsignage.admin.layout.dto.LayoutRegionRequest;
 import com.digitalsignage.admin.layout.dto.LayoutRegionResponse;
 import com.digitalsignage.admin.layout.dto.LayoutResponse;
 import com.digitalsignage.admin.layout.dto.LayoutTemplateResponse;
 import com.digitalsignage.admin.layout.dto.LayoutTemplateSkeletonResponse;
 import com.digitalsignage.admin.layout.dto.UpdateLayoutRequest;
+import com.digitalsignage.admin.layout.repository.LayoutRegionComponentRepository;
 import com.digitalsignage.admin.layout.repository.LayoutRegionRepository;
 import com.digitalsignage.admin.layout.repository.LayoutRepository;
 import com.digitalsignage.admin.layout.service.LayoutService;
@@ -26,7 +29,9 @@ import org.springframework.transaction.annotation.Transactional;
 import org.springframework.util.StringUtils;
 
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 
 @Service
 @RequiredArgsConstructor
@@ -46,6 +51,7 @@ public class LayoutServiceImpl implements LayoutService {
 
     private final LayoutRepository layoutRepository;
     private final LayoutRegionRepository layoutRegionRepository;
+    private final LayoutRegionComponentRepository layoutRegionComponentRepository;
     private final OrganizationRepository organizationRepository;
     private final ScheduleRepository scheduleRepository;
     private final ConfigPushService configPushService;
@@ -109,8 +115,11 @@ public class LayoutServiceImpl implements LayoutService {
         r.setWidth(width);
         r.setHeight(height);
         r.setZIndex(zIndex);
-        r.setComponentType(DEFAULT_COMPONENT_TYPE);
-        r.setConfigJson(EMPTY_REGION_CONFIG_JSON);
+        LayoutRegionComponentRequest c = new LayoutRegionComponentRequest();
+        c.setComponentType(DEFAULT_COMPONENT_TYPE);
+        c.setConfigJson(EMPTY_REGION_CONFIG_JSON);
+        c.setSortOrder(0);
+        r.setComponents(List.of(c));
         return r;
     }
 
@@ -122,8 +131,16 @@ public class LayoutServiceImpl implements LayoutService {
         r.setWidth((int) Math.round(source.getWidth() * scaleX));
         r.setHeight((int) Math.round(source.getHeight() * scaleY));
         r.setZIndex(source.getZIndex());
-        r.setComponentType(source.getComponentType());
-        r.setConfigJson(source.getConfigJson());
+        List<LayoutRegionComponentRequest> scaledComps = source.getComponents().stream()
+                .map(sc -> {
+                    LayoutRegionComponentRequest c = new LayoutRegionComponentRequest();
+                    c.setComponentType(sc.getComponentType());
+                    c.setConfigJson(sc.getConfigJson());
+                    c.setSortOrder(sc.getSortOrder());
+                    return c;
+                })
+                .toList();
+        r.setComponents(scaledComps);
         return r;
     }
 
@@ -220,11 +237,23 @@ public class LayoutServiceImpl implements LayoutService {
     }
 
     private LayoutResponse toResponse(Layout layout) {
-        List<LayoutRegionResponse> regions = layoutRegionRepository.findByLayoutIdOrderBySort(layout.getId())
-                .stream()
-                .map(LayoutRegionResponse::fromEntity)
+        List<LayoutRegion> regions = layoutRegionRepository.findByLayoutIdOrderBySort(layout.getId());
+        Map<Long, List<LayoutRegionComponent>> byRegionId = new HashMap<>();
+        if (!regions.isEmpty()) {
+            List<Long> ids = regions.stream().map(LayoutRegion::getId).toList();
+            List<LayoutRegionComponent> all = layoutRegionComponentRepository.findByRegion_IdIn(ids);
+            for (LayoutRegionComponent c : all) {
+                byRegionId.computeIfAbsent(c.getRegion().getId(), k -> new ArrayList<>()).add(c);
+            }
+            byRegionId.replaceAll((id, list) -> list.stream()
+                    .sorted(java.util.Comparator.comparing(LayoutRegionComponent::getSortOrder)
+                            .thenComparing(LayoutRegionComponent::getId))
+                    .toList());
+        }
+        List<LayoutRegionResponse> responses = regions.stream()
+                .map(r -> LayoutRegionResponse.fromEntity(r, byRegionId.getOrDefault(r.getId(), List.of())))
                 .toList();
-        return LayoutResponse.fromEntity(layout, regions);
+        return LayoutResponse.fromEntity(layout, responses);
     }
 
     private void saveRegions(Layout layout, List<LayoutRegionRequest> regionRequests) {
@@ -237,15 +266,28 @@ public class LayoutServiceImpl implements LayoutService {
             region.setWidth(request.getWidth());
             region.setHeight(request.getHeight());
             region.setZIndex(request.getZIndex());
-            region.setComponentType(request.getComponentType());
-            region.setConfigJson(request.getConfigJson());
-            layoutRegionRepository.save(region);
+            LayoutRegion saved = layoutRegionRepository.save(region);
+            List<LayoutRegionComponentRequest> comps = request.getComponents();
+            for (int i = 0; i < comps.size(); i++) {
+                LayoutRegionComponentRequest cr = comps.get(i);
+                LayoutRegionComponent entity = new LayoutRegionComponent();
+                entity.setRegion(saved);
+                entity.setComponentType(cr.getComponentType());
+                entity.setConfigJson(cr.getConfigJson());
+                entity.setSortOrder(cr.getSortOrder() != null ? cr.getSortOrder() : i);
+                layoutRegionComponentRepository.save(entity);
+            }
         }
     }
 
     private void validateRegions(List<LayoutRegionRequest> regions) {
         if (regions == null || regions.isEmpty()) {
             throw new BusinessException(400, "regions is required");
+        }
+        for (LayoutRegionRequest r : regions) {
+            if (r.getComponents() == null || r.getComponents().isEmpty()) {
+                throw new BusinessException(400, "each region must have at least one component");
+            }
         }
     }
 

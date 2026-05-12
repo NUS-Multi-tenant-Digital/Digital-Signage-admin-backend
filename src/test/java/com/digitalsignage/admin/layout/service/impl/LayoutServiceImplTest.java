@@ -6,12 +6,15 @@ import com.digitalsignage.admin.common.enums.UserRole;
 import com.digitalsignage.admin.common.exception.BusinessException;
 import com.digitalsignage.admin.entity.Layout;
 import com.digitalsignage.admin.entity.LayoutRegion;
+import com.digitalsignage.admin.entity.LayoutRegionComponent;
 import com.digitalsignage.admin.entity.Organization;
 import com.digitalsignage.admin.layout.dto.CreateLayoutRequest;
+import com.digitalsignage.admin.layout.dto.LayoutRegionComponentRequest;
 import com.digitalsignage.admin.layout.dto.LayoutRegionRequest;
 import com.digitalsignage.admin.layout.dto.LayoutTemplateSkeletonResponse;
 import com.digitalsignage.admin.layout.dto.LayoutResponse;
 import com.digitalsignage.admin.layout.dto.UpdateLayoutRequest;
+import com.digitalsignage.admin.layout.repository.LayoutRegionComponentRepository;
 import com.digitalsignage.admin.layout.repository.LayoutRegionRepository;
 import com.digitalsignage.admin.layout.repository.LayoutRepository;
 import com.digitalsignage.admin.schedule.repository.ScheduleRepository;
@@ -34,7 +37,7 @@ import java.util.Optional;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.ArgumentMatchers.anyList;
 import static org.mockito.Mockito.doNothing;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
@@ -48,6 +51,9 @@ class LayoutServiceImplTest {
 
     @Mock
     private LayoutRegionRepository layoutRegionRepository;
+
+    @Mock
+    private LayoutRegionComponentRepository layoutRegionComponentRepository;
 
     @Mock
     private OrganizationRepository organizationRepository;
@@ -98,8 +104,10 @@ class LayoutServiceImplTest {
 
     @Test
     void listLayouts_success() {
+        LayoutRegion region = sampleRegion(layout);
         when(layoutRepository.findByOrganization_IdOrderByUpdatedAtDesc(10L)).thenReturn(List.of(layout));
-        when(layoutRegionRepository.findByLayoutIdOrderBySort(1L)).thenReturn(List.of(sampleRegion(layout)));
+        when(layoutRegionRepository.findByLayoutIdOrderBySort(1L)).thenReturn(List.of(region));
+        when(layoutRegionComponentRepository.findByRegion_IdIn(anyList())).thenReturn(List.of(sampleComponent(region)));
 
         List<LayoutResponse> responses = layoutService.listLayouts();
 
@@ -139,13 +147,21 @@ class LayoutServiceImplTest {
         when(organizationRepository.findById(10L)).thenReturn(Optional.of(organization));
         when(layoutRepository.save(any(Layout.class))).thenReturn(saved);
         when(layoutRepository.findByIdAndOrganization_Id(5L, 10L)).thenReturn(Optional.of(saved));
-        when(layoutRegionRepository.findByLayoutIdOrderBySort(5L)).thenReturn(List.of(sampleRegion(saved)));
+        LayoutRegion persistedRegion = sampleRegion(saved);
+        when(layoutRegionRepository.save(any(LayoutRegion.class))).thenAnswer(inv -> {
+            LayoutRegion r = inv.getArgument(0);
+            r.setId(100L);
+            return r;
+        });
+        when(layoutRegionRepository.findByLayoutIdOrderBySort(5L)).thenReturn(List.of(persistedRegion));
+        when(layoutRegionComponentRepository.findByRegion_IdIn(anyList())).thenReturn(List.of(sampleComponent(persistedRegion)));
 
         LayoutResponse response = layoutService.createLayout(request);
 
         assertThat(response.getId()).isEqualTo(5L);
         assertThat(response.getTemplateType()).isEqualTo("TOP_BOTTOM");
         verify(layoutRegionRepository).save(any(LayoutRegion.class));
+        verify(layoutRegionComponentRepository).save(any(LayoutRegionComponent.class));
         verify(configPushService).notifyLayoutChanged(5L);
     }
 
@@ -168,13 +184,21 @@ class LayoutServiceImplTest {
         when(layoutRepository.findByIdAndOrganization_Id(1L, 10L)).thenReturn(Optional.of(layout), Optional.of(updated));
         when(layoutRepository.save(any(Layout.class))).thenReturn(updated);
         doNothing().when(layoutRegionRepository).deleteByLayout_Id(1L);
-        when(layoutRegionRepository.findByLayoutIdOrderBySort(1L)).thenReturn(List.of(sampleRegion(updated)));
+        LayoutRegion persistedRegion = sampleRegion(updated);
+        when(layoutRegionRepository.save(any(LayoutRegion.class))).thenAnswer(inv -> {
+            LayoutRegion r = inv.getArgument(0);
+            r.setId(100L);
+            return r;
+        });
+        when(layoutRegionRepository.findByLayoutIdOrderBySort(1L)).thenReturn(List.of(persistedRegion));
+        when(layoutRegionComponentRepository.findByRegion_IdIn(anyList())).thenReturn(List.of(sampleComponent(persistedRegion)));
 
         LayoutResponse response = layoutService.updateLayout(1L, request);
 
         assertThat(response.getStatus()).isEqualTo(LayoutStatus.PUBLISHED);
         verify(layoutRegionRepository).deleteByLayout_Id(1L);
         verify(layoutRegionRepository).save(any(LayoutRegion.class));
+        verify(layoutRegionComponentRepository).save(any(LayoutRegionComponent.class));
         verify(configPushService).notifyLayoutChanged(1L);
     }
 
@@ -226,7 +250,7 @@ class LayoutServiceImplTest {
         assertThat(skeleton.getRegions().get(0).getRegionName()).isEqualTo("main");
         assertThat(skeleton.getRegions().get(0).getWidth()).isEqualTo(1920);
         assertThat(skeleton.getRegions().get(0).getHeight()).isEqualTo(1080);
-        assertThat(skeleton.getRegions().get(0).getConfigJson()).isEqualTo("{}");
+        assertThat(skeleton.getRegions().get(0).getComponents().get(0).getConfigJson()).isEqualTo("{}");
     }
 
     @Test
@@ -261,6 +285,10 @@ class LayoutServiceImplTest {
     }
 
     private static LayoutRegionRequest sampleRegionRequest() {
+        LayoutRegionComponentRequest comp = new LayoutRegionComponentRequest();
+        comp.setComponentType("PLAYLIST");
+        comp.setConfigJson("{\"playlistId\":1}");
+        comp.setSortOrder(0);
         LayoutRegionRequest req = new LayoutRegionRequest();
         req.setRegionName("main");
         req.setX(0);
@@ -268,8 +296,7 @@ class LayoutServiceImplTest {
         req.setWidth(1920);
         req.setHeight(1080);
         req.setZIndex(1);
-        req.setComponentType("PLAYLIST");
-        req.setConfigJson("{\"playlistId\":1}");
+        req.setComponents(List.of(comp));
         return req;
     }
 
@@ -283,8 +310,16 @@ class LayoutServiceImplTest {
         region.setWidth(1920);
         region.setHeight(1080);
         region.setZIndex(1);
-        region.setComponentType("PLAYLIST");
-        region.setConfigJson("{\"playlistId\":1}");
         return region;
+    }
+
+    private static LayoutRegionComponent sampleComponent(LayoutRegion region) {
+        LayoutRegionComponent c = new LayoutRegionComponent();
+        c.setId(10L);
+        c.setRegion(region);
+        c.setComponentType("PLAYLIST");
+        c.setConfigJson("{\"playlistId\":1}");
+        c.setSortOrder(0);
+        return c;
     }
 }

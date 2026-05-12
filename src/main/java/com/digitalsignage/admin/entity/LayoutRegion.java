@@ -6,9 +6,13 @@ import jakarta.persistence.Entity;
 import jakarta.persistence.FetchType;
 import jakarta.persistence.JoinColumn;
 import jakarta.persistence.ManyToOne;
+import jakarta.persistence.OneToMany;
 import jakarta.persistence.Table;
 import lombok.Getter;
 import lombok.Setter;
+
+import java.util.ArrayList;
+import java.util.List;
 
 @Getter
 @Setter
@@ -38,9 +42,6 @@ public class LayoutRegion extends BaseAuditableEntity {
     @Column(name = "z_index", nullable = false)
     private Integer zIndex;
 
-    @Column(name = "component_type", nullable = false, length = 64)
-    private String componentType;
-
-    @Column(name = "config_json", nullable = false, columnDefinition = "TEXT")
-    private String configJson;
+    @OneToMany(mappedBy = "region")
+    private List<LayoutRegionComponent> components = new ArrayList<>();
 }

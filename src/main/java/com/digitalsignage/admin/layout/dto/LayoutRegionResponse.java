@@ -1,8 +1,12 @@
 package com.digitalsignage.admin.layout.dto;
 
 import com.digitalsignage.admin.entity.LayoutRegion;
+import com.digitalsignage.admin.entity.LayoutRegionComponent;
 import lombok.Builder;
 import lombok.Getter;
+
+import java.util.Comparator;
+import java.util.List;
 
 @Getter
 @Builder
@@ -15,10 +19,13 @@ public class LayoutRegionResponse {
     private Integer width;
     private Integer height;
     private Integer zIndex;
-    private String componentType;
-    private String configJson;
+    private List<LayoutRegionComponentResponse> components;
 
-    public static LayoutRegionResponse fromEntity(LayoutRegion region) {
+    public static LayoutRegionResponse fromEntity(LayoutRegion region, List<LayoutRegionComponent> components) {
+        List<LayoutRegionComponentResponse> compResponses = components.stream()
+                .sorted(Comparator.comparing(LayoutRegionComponent::getSortOrder).thenComparing(LayoutRegionComponent::getId))
+                .map(LayoutRegionComponentResponse::fromEntity)
+                .toList();
         return LayoutRegionResponse.builder()
                 .id(region.getId())
                 .regionName(region.getRegionName())
@@ -27,8 +34,7 @@ public class LayoutRegionResponse {
                 .width(region.getWidth())
                 .height(region.getHeight())
                 .zIndex(region.getZIndex())
-                .componentType(region.getComponentType())
-                .configJson(region.getConfigJson())
+                .components(compResponses)
                 .build();
     }
 }

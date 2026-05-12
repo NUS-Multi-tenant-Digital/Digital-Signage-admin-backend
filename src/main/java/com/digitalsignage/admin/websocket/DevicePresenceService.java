@@ -3,7 +3,6 @@ package com.digitalsignage.admin.websocket;
 import com.digitalsignage.admin.common.enums.ScreenStatus;
 import com.digitalsignage.admin.common.enums.WsStatus;
 import com.digitalsignage.admin.device.config.DevicePresenceProperties;
-import com.digitalsignage.admin.device.dto.DeviceHeartbeatRequest;
 import com.digitalsignage.admin.entity.Screen;
 import com.digitalsignage.admin.screen.repository.ScreenRepository;
 import lombok.RequiredArgsConstructor;
@@ -79,30 +78,6 @@ public class DevicePresenceService {
             screen.setStatus(ScreenStatus.SUSPECT);
             screenRepository.save(screen);
         }
-    }
-
-    @Transactional
-    public void applyHttpHeartbeat(Screen screen, DeviceHeartbeatRequest request) {
-        LocalDateTime now = LocalDateTime.now();
-        screen.setLastHeartbeatAt(now);
-        if (request.getAppVersion() != null) {
-            screen.setAppVersion(request.getAppVersion());
-        }
-        if (request.getResolutionWidth() != null) {
-            screen.setResolutionWidth(request.getResolutionWidth());
-        }
-        if (request.getResolutionHeight() != null) {
-            screen.setResolutionHeight(request.getResolutionHeight());
-        }
-
-        if (Boolean.FALSE.equals(request.getRuntimeHealthy())) {
-            screen.setStatus(ScreenStatus.ERROR);
-        } else {
-            if (screen.getStatus() == ScreenStatus.ERROR) {
-                screen.setStatus(ScreenStatus.ONLINE);
-            }
-        }
-        screenRepository.save(screen);
     }
 
     private static void promoteOnlineIfApplicable(Screen screen) {

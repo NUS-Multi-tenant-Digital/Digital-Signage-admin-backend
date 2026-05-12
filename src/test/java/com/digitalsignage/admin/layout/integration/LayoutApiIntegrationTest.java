@@ -5,6 +5,7 @@ import com.digitalsignage.admin.common.enums.OrganizationStatus;
 import com.digitalsignage.admin.common.enums.UserRole;
 import com.digitalsignage.admin.entity.Organization;
 import com.digitalsignage.admin.layout.dto.CreateLayoutRequest;
+import com.digitalsignage.admin.layout.dto.LayoutRegionComponentRequest;
 import com.digitalsignage.admin.layout.dto.LayoutRegionRequest;
 import com.digitalsignage.admin.layout.dto.UpdateLayoutRequest;
 import com.digitalsignage.admin.layout.repository.LayoutRegionRepository;
@@ -132,7 +133,7 @@ class LayoutApiIntegrationTest {
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.data.name").value("Lobby Layout Updated"))
                 .andExpect(jsonPath("$.data.status").value("PUBLISHED"))
-                .andExpect(jsonPath("$.data.regions[0].componentType").value("TEXT"));
+                .andExpect(jsonPath("$.data.regions[0].components[0].componentType").value("TEXT"));
 
         mockMvc.perform(delete("/api/admin/layouts/{id}", layoutId)
                         .header(HttpHeaders.AUTHORIZATION, "Bearer it-token"))
@@ -155,6 +156,10 @@ class LayoutApiIntegrationTest {
     }
 
     private static LayoutRegionRequest region(String regionName, String componentType, String configJson, int height) {
+        LayoutRegionComponentRequest comp = new LayoutRegionComponentRequest();
+        comp.setComponentType(componentType);
+        comp.setConfigJson(configJson);
+        comp.setSortOrder(0);
         LayoutRegionRequest request = new LayoutRegionRequest();
         request.setRegionName(regionName);
         request.setX(0);
@@ -162,8 +167,7 @@ class LayoutApiIntegrationTest {
         request.setWidth(1920);
         request.setHeight(height);
         request.setZIndex(1);
-        request.setComponentType(componentType);
-        request.setConfigJson(configJson);
+        request.setComponents(List.of(comp));
         return request;
     }
 }

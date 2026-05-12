@@ -5,12 +5,10 @@ import com.digitalsignage.admin.common.exception.BusinessException;
 import com.digitalsignage.admin.device.dto.ActiveConfigResponse;
 import com.digitalsignage.admin.device.dto.DeviceActivateRequest;
 import com.digitalsignage.admin.device.dto.DeviceActivateResponse;
-import com.digitalsignage.admin.device.dto.DeviceHeartbeatRequest;
 import com.digitalsignage.admin.device.dto.PlaybackLogSubmitRequest;
 import com.digitalsignage.admin.device.repository.PlaybackLogRepository;
 import com.digitalsignage.admin.device.service.ActiveConfigService;
 import com.digitalsignage.admin.device.service.DeviceService;
-import com.digitalsignage.admin.websocket.DevicePresenceService;
 import com.digitalsignage.admin.entity.Media;
 import com.digitalsignage.admin.entity.PlaybackLog;
 import com.digitalsignage.admin.entity.Playlist;
@@ -40,7 +38,6 @@ public class DeviceServiceImpl implements DeviceService {
     private final PlaylistRepository playlistRepository;
     private final ScheduleRepository scheduleRepository;
     private final PlaybackLogRepository playbackLogRepository;
-    private final DevicePresenceService devicePresenceService;
 
     @Override
     @Transactional
@@ -71,16 +68,6 @@ public class DeviceServiceImpl implements DeviceService {
                 .orElseThrow(() -> new BusinessException(404, "screen not found"));
         return activeConfigService.resolve(screen, LocalDateTime.now())
                 .orElseThrow(() -> new BusinessException(404, "no active configuration"));
-    }
-
-    @Override
-    @Transactional
-    public void heartbeat(DeviceHeartbeatRequest request) {
-        DevicePrincipal device = SecurityUtils.requireDevice();
-        Screen screen = screenRepository.findById(device.getScreenId())
-                .orElseThrow(() -> new BusinessException(404, "screen not found"));
-        DeviceHeartbeatRequest body = request != null ? request : new DeviceHeartbeatRequest();
-        devicePresenceService.applyHttpHeartbeat(screen, body);
     }
 
     @Override
