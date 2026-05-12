@@ -5,7 +5,7 @@ spring:
   datasource:
     url: jdbc:mysql://localhost:3306/digital_signage?useUnicode=true&characterEncoding=utf8&serverTimezone=Asia/Shanghai
     username: ${DB_USERNAME:root}
-    password: ${DB_PASSWORD:Wazly13145al0.}
+    password: ${DB_PASSWORD}
     driver-class-name: com.mysql.cj.jdbc.Driver
 
   jpa:
@@ -50,3 +50,10 @@ app:
     public-base-url: ${STORAGE_PUBLIC_BASE_URL:}
     presigned-put-url-template: ${STORAGE_PRESIGNED_PUT_URL_TEMPLATE:}
     upload-policy-expire-minutes: ${STORAGE_UPLOAD_POLICY_EXPIRE_MINUTES:60}
+  device:
+    presence:
+      monitor-interval-ms: 30000
+      ws-silence-threshold-seconds: 90
+      suspect-probe-threshold: 1
+      offline-probe-threshold: 3
+      heartbeat-stale-seconds: 600

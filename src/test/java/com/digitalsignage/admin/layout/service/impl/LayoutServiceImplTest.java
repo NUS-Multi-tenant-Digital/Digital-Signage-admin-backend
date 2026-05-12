@@ -9,11 +9,14 @@ import com.digitalsignage.admin.entity.LayoutRegion;
 import com.digitalsignage.admin.entity.Organization;
 import com.digitalsignage.admin.layout.dto.CreateLayoutRequest;
 import com.digitalsignage.admin.layout.dto.LayoutRegionRequest;
+import com.digitalsignage.admin.layout.dto.LayoutTemplateSkeletonResponse;
 import com.digitalsignage.admin.layout.dto.LayoutResponse;
 import com.digitalsignage.admin.layout.dto.UpdateLayoutRequest;
 import com.digitalsignage.admin.layout.repository.LayoutRegionRepository;
 import com.digitalsignage.admin.layout.repository.LayoutRepository;
+import com.digitalsignage.admin.schedule.repository.ScheduleRepository;
 import com.digitalsignage.admin.security.AdminPrincipal;
+import com.digitalsignage.admin.websocket.ConfigPushService;
 import com.digitalsignage.admin.user.repository.OrganizationRepository;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
@@ -48,6 +51,12 @@ class LayoutServiceImplTest {
 
     @Mock
     private OrganizationRepository organizationRepository;
+
+    @Mock
+    private ScheduleRepository scheduleRepository;
+
+    @Mock
+    private ConfigPushService configPushService;
 
     @InjectMocks
     private LayoutServiceImpl layoutService;
@@ -137,6 +146,7 @@ class LayoutServiceImplTest {
         assertThat(response.getId()).isEqualTo(5L);
         assertThat(response.getTemplateType()).isEqualTo("TOP_BOTTOM");
         verify(layoutRegionRepository).save(any(LayoutRegion.class));
+        verify(configPushService).notifyLayoutChanged(5L);
     }
 
     @Test
@@ -165,11 +175,13 @@ class LayoutServiceImplTest {
         assertThat(response.getStatus()).isEqualTo(LayoutStatus.PUBLISHED);
         verify(layoutRegionRepository).deleteByLayout_Id(1L);
         verify(layoutRegionRepository).save(any(LayoutRegion.class));
+        verify(configPushService).notifyLayoutChanged(1L);
     }
 
     @Test
     void deleteLayout_success() {
         when(layoutRepository.findByIdAndOrganization_Id(1L, 10L)).thenReturn(Optional.of(layout));
+        when(scheduleRepository.existsByLayout_Id(1L)).thenReturn(false);
 
         layoutService.deleteLayout(1L);
 
@@ -200,6 +212,52 @@ class LayoutServiceImplTest {
         assertThatThrownBy(() -> layoutService.listLayouts())
                 .isInstanceOf(BusinessException.class)
                 .hasFieldOrPropertyWithValue("code", 401);
+    }
+
+    @Test
+    void getTemplateSkeleton_singleFull_atDesignResolution() {
+        LayoutTemplateSkeletonResponse skeleton =
+                layoutService.getTemplateSkeleton("SINGLE_FULL", 1920, 1080);
+
+        assertThat(skeleton.getTemplateType()).isEqualTo("SINGLE_FULL");
+        assertThat(skeleton.getResolutionWidth()).isEqualTo(1920);
+        assertThat(skeleton.getResolutionHeight()).isEqualTo(1080);
+        assertThat(skeleton.getRegions()).hasSize(1);
+        assertThat(skeleton.getRegions().get(0).getRegionName()).isEqualTo("main");
+        assertThat(skeleton.getRegions().get(0).getWidth()).isEqualTo(1920);
+        assertThat(skeleton.getRegions().get(0).getHeight()).isEqualTo(1080);
+        assertThat(skeleton.getRegions().get(0).getConfigJson()).isEqualTo("{}");
+    }
+
+    @Test
+    void getTemplateSkeleton_normalizesTemplateTypeCase() {
+        LayoutTemplateSkeletonResponse skeleton =
+                layoutService.getTemplateSkeleton("single_full", 1920, 1080);
+
+        assertThat(skeleton.getTemplateType()).isEqualTo("SINGLE_FULL");
+    }
+
+    @Test
+    void getTemplateSkeleton_unknownTemplate_throws404() {
+        assertThatThrownBy(() -> layoutService.getTemplateSkeleton("UNKNOWN", 1920, 1080))
+                .isInstanceOf(BusinessException.class)
+                .hasFieldOrPropertyWithValue("code", 404);
+    }
+
+    @Test
+    void getTemplateSkeleton_invalidResolution_throws400() {
+        assertThatThrownBy(() -> layoutService.getTemplateSkeleton("SINGLE_FULL", 0, 1080))
+                .isInstanceOf(BusinessException.class)
+                .hasFieldOrPropertyWithValue("code", 400);
+    }
+
+    @Test
+    void getTemplateSkeleton_scalesRegionsToTargetResolution() {
+        LayoutTemplateSkeletonResponse skeleton =
+                layoutService.getTemplateSkeleton("LEFT_RIGHT", 3840, 2160);
+
+        assertThat(skeleton.getRegions().get(0).getWidth()).isEqualTo(1920);
+        assertThat(skeleton.getRegions().get(1).getX()).isEqualTo(1920);
     }
 
     private static LayoutRegionRequest sampleRegionRequest() {
