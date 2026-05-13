@@ -9,6 +9,8 @@ import com.digitalsignage.admin.media.config.MediaStorageProperties;
 import com.digitalsignage.admin.media.dto.ConfirmMediaRequest;
 import com.digitalsignage.admin.media.dto.UploadPolicyRequest;
 import com.digitalsignage.admin.media.dto.UploadPolicyResponse;
+import com.digitalsignage.admin.media.oss.OssPresignedUrlFactory;
+import com.digitalsignage.admin.media.oss.OssPresignedUrlFactory.PresignedPut;
 import com.digitalsignage.admin.media.repository.MediaRepository;
 import com.digitalsignage.admin.playlist.repository.PlaylistItemRepository;
 import com.digitalsignage.admin.security.AdminPrincipal;
@@ -23,11 +25,13 @@ import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.context.SecurityContextHolder;
 
+import java.util.Map;
 import java.util.Optional;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.Mockito.lenient;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
@@ -49,6 +53,9 @@ class MediaServiceImplTest {
     @Mock
     private MediaStorageProperties storageProperties;
 
+    @Mock
+    private OssPresignedUrlFactory ossPresignedUrlFactory;
+
     @InjectMocks
     private MediaServiceImpl mediaService;
 
@@ -56,6 +63,9 @@ class MediaServiceImplTest {
 
     @BeforeEach
     void setUpPrincipal() {
+        lenient().when(ossPresignedUrlFactory.buildPresignedPut(any(), any(), any())).thenReturn(Optional.empty());
+        lenient().when(ossPresignedUrlFactory.fetchContentLength(any())).thenReturn(Optional.empty());
+
         organization = new Organization();
         organization.setId(ORG_ID);
         organization.setName("Org");
@@ -77,6 +87,26 @@ class MediaServiceImplTest {
     }
 
     @Test
+    void uploadPolicy_whenOssReturnsPresigned_usesPutUrlAndHeaders() {
+        when(storageProperties.getUploadPolicyExpireMinutes()).thenReturn(60);
+        when(ossPresignedUrlFactory.buildPresignedPut(any(), any(), any()))
+                .thenReturn(Optional.of(new PresignedPut(
+                        "https://bucket.oss-ap-southeast-1.aliyuncs.com/key?sign=1",
+                        Map.of("Content-Type", "video/mp4"))));
+
+        UploadPolicyRequest req = new UploadPolicyRequest();
+        req.setMediaType(MediaType.VIDEO);
+        req.setOriginalFilename("a.mp4");
+        req.setContentType("video/mp4");
+
+        UploadPolicyResponse res = mediaService.uploadPolicy(req);
+
+        assertThat(res.getUploadMethod()).isEqualTo("PUT");
+        assertThat(res.getUploadUrl()).startsWith("https://");
+        assertThat(res.getRequiredHeaders()).containsEntry("Content-Type", "video/mp4");
+    }
+
+    @Test
     void uploadPolicy_withoutPresignedTemplate_returnsDeferred() {
         when(storageProperties.getUploadPolicyExpireMinutes()).thenReturn(60);
         when(storageProperties.getPresignedPutUrlTemplate()).thenReturn("");
@@ -90,7 +120,7 @@ class MediaServiceImplTest {
         assertThat(res.getUploadMethod()).isEqualTo("DEFERRED");
         assertThat(res.getUploadUrl()).isNull();
         assertThat(res.getObjectKey()).startsWith(ORG_ID + "/");
-        assertThat(res.getObjectKey()).endsWith("_a_b.png");
+        assertThat(res.getObjectKey()).matches(ORG_ID + "/image/\\d{8}/[0-9a-f-]{36}\\.png");
         assertThat(res.getExpiresAt()).isNotNull();
     }
 
@@ -121,7 +151,7 @@ class MediaServiceImplTest {
 
         UploadPolicyResponse res = mediaService.uploadPolicy(req);
 
-        assertThat(res.getObjectKey()).startsWith(ORG_ID + "/yt-");
+        assertThat(res.getObjectKey()).matches(ORG_ID + "/youtube/\\d{8}/[0-9a-f-]{36}\\.txt");
     }
 
     @Test

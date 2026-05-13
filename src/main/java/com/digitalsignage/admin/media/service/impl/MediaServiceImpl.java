@@ -9,6 +9,7 @@ import com.digitalsignage.admin.media.dto.ConfirmMediaRequest;
 import com.digitalsignage.admin.media.dto.MediaResponse;
 import com.digitalsignage.admin.media.dto.UploadPolicyRequest;
 import com.digitalsignage.admin.media.dto.UploadPolicyResponse;
+import com.digitalsignage.admin.media.oss.OssPresignedUrlFactory;
 import com.digitalsignage.admin.media.repository.MediaRepository;
 import com.digitalsignage.admin.media.service.MediaService;
 import com.digitalsignage.admin.playlist.repository.PlaylistItemRepository;
@@ -22,9 +23,16 @@ import org.springframework.transaction.annotation.Transactional;
 import org.springframework.util.StringUtils;
 
 import java.time.Instant;
+import java.time.LocalDate;
+import java.time.ZoneId;
+import java.time.format.DateTimeFormatter;
 import java.time.LocalDateTime;
 import java.util.Collections;
+import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Locale;
+import java.util.Map;
+import java.util.Objects;
 import java.util.UUID;
 
 @Service
@@ -35,6 +43,7 @@ public class MediaServiceImpl implements MediaService {
     private final OrganizationRepository organizationRepository;
     private final PlaylistItemRepository playlistItemRepository;
     private final MediaStorageProperties storageProperties;
+    private final OssPresignedUrlFactory ossPresignedUrlFactory;
 
     @Override
     @Transactional(readOnly = true)
@@ -43,8 +52,16 @@ public class MediaServiceImpl implements MediaService {
         String objectKey = buildObjectKey(orgId, request.getMediaType(), request.getOriginalFilename());
         Instant expiresAt = Instant.now().plusSeconds(storageProperties.getUploadPolicyExpireMinutes() * 60L);
 
-        String uploadUrl = null;
-        if (StringUtils.hasText(storageProperties.getPresignedPutUrlTemplate())) {
+        Map<String, String> requiredHeaders = new LinkedHashMap<>();
+        String uploadUrl = ossPresignedUrlFactory
+                .buildPresignedPut(objectKey, request.getContentType(), expiresAt)
+                .map(p -> {
+                    requiredHeaders.putAll(p.requiredHeaders());
+                    return p.uploadUrl();
+                })
+                .orElse(null);
+
+        if (uploadUrl == null && StringUtils.hasText(storageProperties.getPresignedPutUrlTemplate())) {
             uploadUrl = storageProperties.getPresignedPutUrlTemplate().replace("{objectKey}", objectKey);
         }
 
@@ -53,7 +70,9 @@ public class MediaServiceImpl implements MediaService {
                 .uploadMethod(StringUtils.hasText(uploadUrl) ? "PUT" : "DEFERRED")
                 .uploadUrl(uploadUrl)
                 .expiresAt(expiresAt)
-                .requiredHeaders(Collections.emptyMap())
+                .requiredHeaders(requiredHeaders.isEmpty()
+                        ? Collections.emptyMap()
+                        : Collections.unmodifiableMap(requiredHeaders))
                 .build();
     }
 
@@ -64,6 +83,14 @@ public class MediaServiceImpl implements MediaService {
         Long orgId = principal.getOrganizationId();
         String objectKey = request.getObjectKey().trim();
         assertObjectKeyBelongsToOrg(objectKey, orgId);
+
+        if (request.getFileSizeBytes() != null && request.getFileSizeBytes() > 0) {
+            ossPresignedUrlFactory.fetchContentLength(objectKey).ifPresent(len -> {
+                if (!Objects.equals(len, request.getFileSizeBytes())) {
+                    throw new BusinessException(400, "object size mismatch with OSS");
+                }
+            });
+        }
 
         if (mediaRepository.existsByOrganization_IdAndObjectKey(orgId, objectKey)) {
             throw new BusinessException(400, "media already exists for this object key");
@@ -141,23 +168,32 @@ public class MediaServiceImpl implements MediaService {
     }
 
     private String buildObjectKey(Long orgId, MediaType mediaType, String originalFilename) {
-        String suffix = switch (mediaType) {
-            case YOUTUBE -> "yt-" + UUID.randomUUID();
-            case IMAGE, VIDEO -> UUID.randomUUID() + "_" + sanitizeFilename(originalFilename);
+        String typeFolder = switch (mediaType) {
+            case IMAGE -> "image";
+            case VIDEO -> "video";
+            case YOUTUBE -> "youtube";
         };
-        return orgId + "/" + suffix;
+        String dateFolder = LocalDate.now(ZoneId.of("Asia/Shanghai"))
+                .format(DateTimeFormatter.BASIC_ISO_DATE);
+        String ext = extractExtension(originalFilename, mediaType);
+        String id = UUID.randomUUID().toString();
+        return orgId + "/" + typeFolder + "/" + dateFolder + "/" + id + "." + ext;
     }
 
-    private static String sanitizeFilename(String name) {
-        String trimmed = name == null ? "" : name.trim();
-        if (trimmed.isEmpty()) {
-            return "file";
+    private static String extractExtension(String originalFilename, MediaType mediaType) {
+        String name = originalFilename == null ? "" : originalFilename.trim();
+        int dot = name.lastIndexOf('.');
+        if (dot >= 0 && dot < name.length() - 1) {
+            String ext = name.substring(dot + 1).toLowerCase(Locale.ROOT).replaceAll("[^a-z0-9]", "");
+            if (!ext.isEmpty() && ext.length() <= 16) {
+                return ext;
+            }
         }
-        String safe = trimmed.replaceAll("[^a-zA-Z0-9._-]", "_");
-        if (safe.length() > 180) {
-            safe = safe.substring(0, 180);
-        }
-        return safe;
+        return switch (mediaType) {
+            case VIDEO -> "mp4";
+            case IMAGE -> "jpg";
+            case YOUTUBE -> "txt";
+        };
     }
 
     private AdminPrincipal currentPrincipal() {

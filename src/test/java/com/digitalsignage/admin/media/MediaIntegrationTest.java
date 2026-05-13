@@ -118,7 +118,7 @@ class MediaIntegrationTest {
 
         String objectKey = objectMapper.readTree(policyRes.getResponse().getContentAsString())
                 .path("data").path("objectKey").asText();
-        assertThat(objectKey).startsWith(organization.getId() + "/");
+        assertThat(objectKey).matches(organization.getId() + "/image/\\d{8}/[0-9a-f-]{36}\\.png");
 
         String confirmBody = objectMapper.writeValueAsString(Map.of(
                 "objectKey", objectKey,
