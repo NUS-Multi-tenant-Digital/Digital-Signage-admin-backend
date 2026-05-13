@@ -3,7 +3,6 @@ package com.digitalsignage.admin.config;
 import com.digitalsignage.admin.security.DeviceAuthenticationFilter;
 import com.digitalsignage.admin.security.JwtAuthenticationFilter;
 import lombok.RequiredArgsConstructor;
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
@@ -21,11 +20,9 @@ import org.springframework.security.web.authentication.UsernamePasswordAuthentic
 public class SecurityConfig {
 
     private final JwtAuthenticationFilter jwtAuthenticationFilter;
+    private final DeviceAuthenticationFilter deviceAuthenticationFilter;
     private final RestAuthenticationEntryPoint authenticationEntryPoint;
     private final RestAccessDeniedHandler accessDeniedHandler;
-
-    @Autowired(required = false)
-    private DeviceAuthenticationFilter deviceAuthenticationFilter;
 
     @Value("${app.api.device-prefix}")
     private String devicePrefix;
@@ -65,10 +62,9 @@ public class SecurityConfig {
                         .anyRequest().authenticated())
                 .httpBasic(AbstractHttpConfigurer::disable)
                 .formLogin(AbstractHttpConfigurer::disable)
-                .addFilterBefore(jwtAuthenticationFilter, UsernamePasswordAuthenticationFilter.class);
-        if (deviceAuthenticationFilter != null) {
-            http.addFilterAfter(deviceAuthenticationFilter, JwtAuthenticationFilter.class);
-        }
+                .addFilterBefore(jwtAuthenticationFilter, UsernamePasswordAuthenticationFilter.class)
+                // Resolve device Bearer tokens before JWT parsing so hex device tokens are never treated as JWTs.
+                .addFilterBefore(deviceAuthenticationFilter, JwtAuthenticationFilter.class);
         return http.build();
     }
 
