@@ -9,6 +9,7 @@ import com.digitalsignage.admin.media.dto.ConfirmMediaRequest;
 import com.digitalsignage.admin.media.dto.MediaResponse;
 import com.digitalsignage.admin.media.dto.UploadPolicyRequest;
 import com.digitalsignage.admin.media.dto.UploadPolicyResponse;
+import com.digitalsignage.admin.media.oss.OssPresignedUrlFactory;
 import com.digitalsignage.admin.media.repository.MediaRepository;
 import com.digitalsignage.admin.media.service.MediaService;
 import com.digitalsignage.admin.playlist.repository.PlaylistItemRepository;
@@ -24,7 +25,10 @@ import org.springframework.util.StringUtils;
 import java.time.Instant;
 import java.time.LocalDateTime;
 import java.util.Collections;
+import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Map;
+import java.util.Objects;
 import java.util.UUID;
 
 @Service
@@ -35,6 +39,7 @@ public class MediaServiceImpl implements MediaService {
     private final OrganizationRepository organizationRepository;
     private final PlaylistItemRepository playlistItemRepository;
     private final MediaStorageProperties storageProperties;
+    private final OssPresignedUrlFactory ossPresignedUrlFactory;
 
     @Override
     @Transactional(readOnly = true)
@@ -43,8 +48,16 @@ public class MediaServiceImpl implements MediaService {
         String objectKey = buildObjectKey(orgId, request.getMediaType(), request.getOriginalFilename());
         Instant expiresAt = Instant.now().plusSeconds(storageProperties.getUploadPolicyExpireMinutes() * 60L);
 
-        String uploadUrl = null;
-        if (StringUtils.hasText(storageProperties.getPresignedPutUrlTemplate())) {
+        Map<String, String> requiredHeaders = new LinkedHashMap<>();
+        String uploadUrl = ossPresignedUrlFactory
+                .buildPresignedPut(objectKey, request.getContentType(), expiresAt)
+                .map(p -> {
+                    requiredHeaders.putAll(p.requiredHeaders());
+                    return p.uploadUrl();
+                })
+                .orElse(null);
+
+        if (uploadUrl == null && StringUtils.hasText(storageProperties.getPresignedPutUrlTemplate())) {
             uploadUrl = storageProperties.getPresignedPutUrlTemplate().replace("{objectKey}", objectKey);
         }
 
@@ -53,7 +66,9 @@ public class MediaServiceImpl implements MediaService {
                 .uploadMethod(StringUtils.hasText(uploadUrl) ? "PUT" : "DEFERRED")
                 .uploadUrl(uploadUrl)
                 .expiresAt(expiresAt)
-                .requiredHeaders(Collections.emptyMap())
+                .requiredHeaders(requiredHeaders.isEmpty()
+                        ? Collections.emptyMap()
+                        : Collections.unmodifiableMap(requiredHeaders))
                 .build();
     }
 
@@ -64,6 +79,14 @@ public class MediaServiceImpl implements MediaService {
         Long orgId = principal.getOrganizationId();
         String objectKey = request.getObjectKey().trim();
         assertObjectKeyBelongsToOrg(objectKey, orgId);
+
+        if (request.getFileSizeBytes() != null && request.getFileSizeBytes() > 0) {
+            ossPresignedUrlFactory.fetchContentLength(objectKey).ifPresent(len -> {
+                if (!Objects.equals(len, request.getFileSizeBytes())) {
+                    throw new BusinessException(400, "object size mismatch with OSS");
+                }
+            });
+        }
 
         if (mediaRepository.existsByOrganization_IdAndObjectKey(orgId, objectKey)) {
             throw new BusinessException(400, "media already exists for this object key");

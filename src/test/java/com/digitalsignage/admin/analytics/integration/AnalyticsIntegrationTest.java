@@ -13,6 +13,7 @@ import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMock
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.test.mock.mockito.MockBean;
 import org.springframework.http.HttpHeaders;
+import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.web.servlet.MockMvc;
 
@@ -32,12 +33,18 @@ class AnalyticsIntegrationTest {
     @Autowired
     private OrganizationRepository organizationRepository;
 
+    @Autowired
+    private JdbcTemplate jdbcTemplate;
+
     @MockBean
     private JwtService jwtService;
 
     @BeforeEach
     void setUp() {
-        organizationRepository.deleteAll();
+        jdbcTemplate.execute("SET REFERENTIAL_INTEGRITY FALSE");
+        jdbcTemplate.update("DELETE FROM screen");
+        jdbcTemplate.update("DELETE FROM organization");
+        jdbcTemplate.execute("SET REFERENTIAL_INTEGRITY TRUE");
 
         Organization organization = new Organization();
         organization.setName("Org Analytics");
