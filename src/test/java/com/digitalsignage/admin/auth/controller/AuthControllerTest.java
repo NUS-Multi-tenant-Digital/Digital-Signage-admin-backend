@@ -1,7 +1,10 @@
 package com.digitalsignage.admin.auth.controller;
 
 import com.digitalsignage.admin.auth.dto.LoginResponse;
+import com.digitalsignage.admin.auth.dto.RegisterOrganizationRequest;
+import com.digitalsignage.admin.auth.dto.RegisterOrganizationResponse;
 import com.digitalsignage.admin.auth.service.AuthService;
+import com.digitalsignage.admin.auth.service.RegistrationService;
 import com.digitalsignage.admin.common.enums.UserRole;
 import com.digitalsignage.admin.common.exception.GlobalExceptionHandler;
 import com.digitalsignage.admin.security.JwtService;
@@ -17,6 +20,7 @@ import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.web.servlet.MockMvc;
 
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.Mockito.doNothing;
 import static org.mockito.Mockito.when;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
@@ -35,6 +39,9 @@ class AuthControllerTest {
 
     @MockBean
     private AuthService authService;
+
+    @MockBean
+    private RegistrationService registrationService;
 
     /** 真实 JwtAuthenticationFilter 会走过滤器链；Mock JwtService 即可满足装配 */
     @MockBean
@@ -107,5 +114,38 @@ class AuthControllerTest {
                         .content("{}"))
                 .andExpect(status().isBadRequest())
                 .andExpect(jsonPath("$.code").value(400));
+    }
+
+    @Test
+    void register_returnsOk() throws Exception {
+        RegisterOrganizationResponse body = RegisterOrganizationResponse.builder()
+                .organizationId(null)
+                .adminUsername("owner")
+                .message("verify email before login")
+                .build();
+        when(registrationService.registerOrganization(any(RegisterOrganizationRequest.class))).thenReturn(body);
+
+        mockMvc.perform(post("/api/admin/auth/register")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(java.util.Map.of(
+                                "organizationName", "Acme",
+                                "organizationCode", "acme-corp",
+                                "adminUsername", "owner",
+                                "adminPassword", "Secret123!",
+                                "adminEmail", "owner@acme.com"))))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.data.organizationId").doesNotExist())
+                .andExpect(jsonPath("$.data.adminUsername").value("owner"));
+    }
+
+    @Test
+    void verifyEmail_returnsOk() throws Exception {
+        doNothing().when(registrationService).verifyEmail(any());
+
+        mockMvc.perform(post("/api/admin/auth/verify-email")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"email\":\"owner@acme.com\",\"code\":\"123456\"}"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.code").value(200));
     }
 }
