@@ -42,7 +42,12 @@ public class SecurityConfig {
                 .authorizeHttpRequests(auth -> auth
                         .requestMatchers("/ws/**").permitAll()
                         .requestMatchers(HttpMethod.POST, devicePrefix + "/activate").permitAll()
-                        .requestMatchers("/api/admin/auth/login", "/api/admin/auth/refresh").permitAll()
+                        .requestMatchers(HttpMethod.POST,
+                                "/api/admin/auth/login",
+                                "/api/admin/auth/refresh",
+                                "/api/admin/auth/register",
+                                "/api/admin/auth/verify-email")
+                        .permitAll()
                         .requestMatchers(HttpMethod.GET, "/api/admin/users/me").authenticated()
                         .requestMatchers(HttpMethod.GET, "/api/admin/users").hasAnyRole("ADMIN", "EDITOR", "VIEWER")
                         .requestMatchers(HttpMethod.GET, "/api/admin/users/*").hasAnyRole("ADMIN", "EDITOR", "VIEWER")
@@ -53,6 +58,10 @@ public class SecurityConfig {
                         .requestMatchers(HttpMethod.GET, "/api/admin/media").hasAnyRole("ADMIN", "EDITOR", "VIEWER")
                         .requestMatchers(HttpMethod.GET, "/api/admin/media/*").hasAnyRole("ADMIN", "EDITOR", "VIEWER")
                         .requestMatchers(HttpMethod.DELETE, "/api/admin/media/*").hasAnyRole("ADMIN", "EDITOR")
+                        .requestMatchers(HttpMethod.POST, "/api/admin/**").hasAnyRole("ADMIN", "EDITOR")
+                        .requestMatchers(HttpMethod.PUT, "/api/admin/**").hasAnyRole("ADMIN", "EDITOR")
+                        .requestMatchers(HttpMethod.PATCH, "/api/admin/**").hasAnyRole("ADMIN", "EDITOR")
+                        .requestMatchers(HttpMethod.DELETE, "/api/admin/**").hasAnyRole("ADMIN", "EDITOR")
                         .anyRequest().authenticated())
                 .httpBasic(AbstractHttpConfigurer::disable)
                 .formLogin(AbstractHttpConfigurer::disable)

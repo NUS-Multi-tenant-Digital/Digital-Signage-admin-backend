@@ -1,0 +1,30 @@
+# 激活方式：本地运行主类时由 MailEnvEnvironmentPostProcessor 读取 mail.env 并写入 spring.mail.* / app.mail.*（可不依赖本 profile）。
+# 生产环境可设置 SPRING_PROFILES_ACTIVE 包含 mail，并在环境中提供 MAIL_*（由本文件绑定）。
+# 必填：MAIL_HOST、MAIL_USERNAME、MAIL_PASSWORD
+# 可选：MAIL_PORT（默认 587）、MAIL_FROM（默认同 MAIL_USERNAME）、MAIL_SMTP_SSL_ENABLE（465 等）
+
+spring:
+  mail:
+    host: ${MAIL_HOST}
+    port: ${MAIL_PORT:587}
+    username: ${MAIL_USERNAME}
+    password: ${MAIL_PASSWORD}
+    default-encoding: UTF-8
+    properties:
+      mail:
+        smtp:
+          auth: true
+          starttls:
+            enable: ${MAIL_SMTP_STARTTLS_ENABLE:true}
+            required: ${MAIL_SMTP_STARTTLS_REQUIRED:false}
+          ssl:
+            enable: ${MAIL_SMTP_SSL_ENABLE:false}
+          connectiontimeout: ${MAIL_SMTP_CONNECTION_TIMEOUT_MS:10000}
+          timeout: ${MAIL_SMTP_TIMEOUT_MS:10000}
+          writetimeout: ${MAIL_SMTP_WRITE_TIMEOUT_MS:10000}
+
+app:
+  mail:
+    enabled: true
+    from: ${MAIL_FROM:${MAIL_USERNAME}}
+    verification-subject: ${MAIL_VERIFICATION_SUBJECT:邮箱验证码}
