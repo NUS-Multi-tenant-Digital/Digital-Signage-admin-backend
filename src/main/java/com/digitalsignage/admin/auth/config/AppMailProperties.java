@@ -14,7 +14,7 @@ import org.springframework.boot.context.properties.ConfigurationProperties;
 public class AppMailProperties {
 
     /**
-     * Optional flag set by {@code mail.env} bootstrap; SMTP selection follows {@code JavaMailSender} presence.
+     * Optional flag; real SMTP usage follows {@code JavaMailSender} (configure via {@code spring.mail.*} / profile {@code mail}).
      */
     private boolean enabled = false;
 

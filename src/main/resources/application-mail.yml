@@ -1,5 +1,5 @@
-# 激活方式：本地运行主类时由 MailEnvEnvironmentPostProcessor 读取 mail.env 并写入 spring.mail.* / app.mail.*（可不依赖本 profile）。
-# 生产环境可设置 SPRING_PROFILES_ACTIVE 包含 mail，并在环境中提供 MAIL_*（由本文件绑定）。
+# 激活方式：SPRING_PROFILES_ACTIVE 含 mail；提供 MAIL_* 环境变量（本地 IDE / 部署平台均可）。
+# 若仍使用本文件，请在环境中设置 SPRING_PROFILES_ACTIVE 包含 mail，并提供 MAIL_*。
 # 必填：MAIL_HOST、MAIL_USERNAME、MAIL_PASSWORD
 # 可选：MAIL_PORT（默认 587）、MAIL_FROM（默认同 MAIL_USERNAME）、MAIL_SMTP_SSL_ENABLE（465 等）
 
