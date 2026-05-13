@@ -25,8 +25,8 @@ public class EmailVerificationMailerStartupIndicator implements ApplicationRunne
         if (emailVerificationMailer instanceof LoggingEmailVerificationMailer) {
             log.warn(
                     "Email verification: using LOG ONLY (no SMTP). "
-                            + "For real mail: add mail.env (see mail.env.example) under user.dir with MAIL_HOST, MAIL_USERNAME, "
-                            + "MAIL_PASSWORD (startup should log \"Configured SMTP from ...\"). user.dir={}",
+                            + "For real mail: set SPRING_PROFILES_ACTIVE=mail and MAIL_* (see application-mail.yml), "
+                            + "or set SPRING_MAIL_* / spring.mail.* via platform env. user.dir={}",
                     System.getProperty("user.dir", "?"));
         } else {
             log.info("Email verification: using {}", emailVerificationMailer.getClass().getSimpleName());
