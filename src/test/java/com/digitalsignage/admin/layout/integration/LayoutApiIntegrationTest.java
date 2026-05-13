@@ -8,8 +8,14 @@ import com.digitalsignage.admin.layout.dto.CreateLayoutRequest;
 import com.digitalsignage.admin.layout.dto.LayoutRegionComponentRequest;
 import com.digitalsignage.admin.layout.dto.LayoutRegionRequest;
 import com.digitalsignage.admin.layout.dto.UpdateLayoutRequest;
+import com.digitalsignage.admin.layout.repository.LayoutRegionComponentRepository;
 import com.digitalsignage.admin.layout.repository.LayoutRegionRepository;
 import com.digitalsignage.admin.layout.repository.LayoutRepository;
+import com.digitalsignage.admin.device.repository.PlaybackLogRepository;
+import com.digitalsignage.admin.media.repository.MediaRepository;
+import com.digitalsignage.admin.playlist.repository.PlaylistItemRepository;
+import com.digitalsignage.admin.playlist.repository.PlaylistRepository;
+import com.digitalsignage.admin.schedule.repository.ScheduleRepository;
 import com.digitalsignage.admin.screen.repository.ScreenRepository;
 import com.digitalsignage.admin.security.AdminPrincipal;
 import com.digitalsignage.admin.security.JwtService;
@@ -58,6 +64,24 @@ class LayoutApiIntegrationTest {
     private LayoutRegionRepository layoutRegionRepository;
 
     @Autowired
+    private LayoutRegionComponentRepository layoutRegionComponentRepository;
+
+    @Autowired
+    private ScheduleRepository scheduleRepository;
+
+    @Autowired
+    private PlaylistItemRepository playlistItemRepository;
+
+    @Autowired
+    private PlaylistRepository playlistRepository;
+
+    @Autowired
+    private MediaRepository mediaRepository;
+
+    @Autowired
+    private PlaybackLogRepository playbackLogRepository;
+
+    @Autowired
     private ScreenRepository screenRepository;
 
     @MockBean
@@ -65,9 +89,15 @@ class LayoutApiIntegrationTest {
 
     @BeforeEach
     void setUp() {
+        scheduleRepository.deleteAll();
+        playlistItemRepository.deleteAll();
+        playbackLogRepository.deleteAll();
+        screenRepository.deleteAll();
+        layoutRegionComponentRepository.deleteAll();
         layoutRegionRepository.deleteAll();
         layoutRepository.deleteAll();
-        screenRepository.deleteAll();
+        playlistRepository.deleteAll();
+        mediaRepository.deleteAll();
         organizationRepository.deleteAll();
 
         Organization organization = new Organization();

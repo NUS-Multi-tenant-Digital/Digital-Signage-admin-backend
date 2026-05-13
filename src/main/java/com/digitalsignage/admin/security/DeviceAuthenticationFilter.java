@@ -1,47 +1,54 @@
 package com.digitalsignage.admin.security;
 
 import com.digitalsignage.admin.common.enums.ActivationStatus;
-import com.digitalsignage.admin.entity.Screen;
 import com.digitalsignage.admin.screen.repository.ScreenRepository;
 import jakarta.servlet.FilterChain;
 import jakarta.servlet.ServletException;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
-import lombok.RequiredArgsConstructor;
-import org.springframework.boot.autoconfigure.condition.ConditionalOnBean;
-import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.HttpHeaders;
 import org.springframework.lang.NonNull;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.security.web.authentication.WebAuthenticationDetailsSource;
-import org.springframework.stereotype.Component;
 import org.springframework.util.StringUtils;
 import org.springframework.web.filter.OncePerRequestFilter;
 
 import java.io.IOException;
 
-@Component
-@ConditionalOnBean(ScreenRepository.class)
-@RequiredArgsConstructor
 public class DeviceAuthenticationFilter extends OncePerRequestFilter {
 
     private static final String BEARER_PREFIX = "Bearer ";
 
     private final ScreenRepository screenRepository;
+    private final String devicePrefix;
 
-    @Value("${app.api.device-prefix}")
-    private String devicePrefix;
+    public DeviceAuthenticationFilter(ScreenRepository screenRepository, String devicePrefix) {
+        this.screenRepository = screenRepository;
+        this.devicePrefix = devicePrefix;
+    }
 
     @Override
     protected boolean shouldNotFilter(@NonNull HttpServletRequest request) {
-        String path = request.getServletPath();
+        String path = resolveRequestPath(request);
         if (!path.startsWith(devicePrefix)) {
             return true;
         }
         String activatePath = devicePrefix + "/activate";
         return path.equals(activatePath);
+    }
+
+    /**
+     * MockMvc often leaves {@link HttpServletRequest#getServletPath()} empty; URI + context path works for tests and Tomcat.
+     */
+    private static String resolveRequestPath(HttpServletRequest request) {
+        String uri = request.getRequestURI();
+        String ctx = request.getContextPath();
+        if (ctx != null && !ctx.isEmpty() && uri.startsWith(ctx)) {
+            uri = uri.substring(ctx.length());
+        }
+        return uri == null || uri.isEmpty() ? "/" : uri;
     }
 
     @Override
