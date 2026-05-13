@@ -120,7 +120,7 @@ class MediaServiceImplTest {
         assertThat(res.getUploadMethod()).isEqualTo("DEFERRED");
         assertThat(res.getUploadUrl()).isNull();
         assertThat(res.getObjectKey()).startsWith(ORG_ID + "/");
-        assertThat(res.getObjectKey()).endsWith("_a_b.png");
+        assertThat(res.getObjectKey()).matches(ORG_ID + "/image/\\d{8}/[0-9a-f-]{36}\\.png");
         assertThat(res.getExpiresAt()).isNotNull();
     }
 
@@ -151,7 +151,7 @@ class MediaServiceImplTest {
 
         UploadPolicyResponse res = mediaService.uploadPolicy(req);
 
-        assertThat(res.getObjectKey()).startsWith(ORG_ID + "/yt-");
+        assertThat(res.getObjectKey()).matches(ORG_ID + "/youtube/\\d{8}/[0-9a-f-]{36}\\.txt");
     }
 
     @Test

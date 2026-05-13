@@ -29,3 +29,11 @@ app:
     refresh-token-days: 14
   registration:
     verification-token-ttl: PT48H
+  # 集成测试不连真实 OSS（避免本机 .env 带 AK 时 uploadMethod 变成 PUT）
+  storage:
+    oss:
+      endpoint: ""
+      bucket: ""
+      region: ""
+      access-key-id: ""
+      access-key-secret: ""

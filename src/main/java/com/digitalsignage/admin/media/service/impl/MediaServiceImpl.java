@@ -23,10 +23,14 @@ import org.springframework.transaction.annotation.Transactional;
 import org.springframework.util.StringUtils;
 
 import java.time.Instant;
+import java.time.LocalDate;
+import java.time.ZoneId;
+import java.time.format.DateTimeFormatter;
 import java.time.LocalDateTime;
 import java.util.Collections;
 import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Locale;
 import java.util.Map;
 import java.util.Objects;
 import java.util.UUID;
@@ -164,23 +168,32 @@ public class MediaServiceImpl implements MediaService {
     }
 
     private String buildObjectKey(Long orgId, MediaType mediaType, String originalFilename) {
-        String suffix = switch (mediaType) {
-            case YOUTUBE -> "yt-" + UUID.randomUUID();
-            case IMAGE, VIDEO -> UUID.randomUUID() + "_" + sanitizeFilename(originalFilename);
+        String typeFolder = switch (mediaType) {
+            case IMAGE -> "image";
+            case VIDEO -> "video";
+            case YOUTUBE -> "youtube";
         };
-        return orgId + "/" + suffix;
+        String dateFolder = LocalDate.now(ZoneId.of("Asia/Shanghai"))
+                .format(DateTimeFormatter.BASIC_ISO_DATE);
+        String ext = extractExtension(originalFilename, mediaType);
+        String id = UUID.randomUUID().toString();
+        return orgId + "/" + typeFolder + "/" + dateFolder + "/" + id + "." + ext;
     }
 
-    private static String sanitizeFilename(String name) {
-        String trimmed = name == null ? "" : name.trim();
-        if (trimmed.isEmpty()) {
-            return "file";
+    private static String extractExtension(String originalFilename, MediaType mediaType) {
+        String name = originalFilename == null ? "" : originalFilename.trim();
+        int dot = name.lastIndexOf('.');
+        if (dot >= 0 && dot < name.length() - 1) {
+            String ext = name.substring(dot + 1).toLowerCase(Locale.ROOT).replaceAll("[^a-z0-9]", "");
+            if (!ext.isEmpty() && ext.length() <= 16) {
+                return ext;
+            }
         }
-        String safe = trimmed.replaceAll("[^a-zA-Z0-9._-]", "_");
-        if (safe.length() > 180) {
-            safe = safe.substring(0, 180);
-        }
-        return safe;
+        return switch (mediaType) {
+            case VIDEO -> "mp4";
+            case IMAGE -> "jpg";
+            case YOUTUBE -> "txt";
+        };
     }
 
     private AdminPrincipal currentPrincipal() {
