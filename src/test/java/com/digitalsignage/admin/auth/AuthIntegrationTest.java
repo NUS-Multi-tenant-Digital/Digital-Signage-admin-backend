@@ -1,5 +1,6 @@
 package com.digitalsignage.admin.auth;
 
+import com.digitalsignage.admin.auth.pending.RegistrationPendingStore;
 import com.digitalsignage.admin.auth.repository.SysUserRepository;
 import com.digitalsignage.admin.common.enums.OrganizationStatus;
 import com.digitalsignage.admin.common.enums.SysUserStatus;
@@ -38,6 +39,8 @@ class AuthIntegrationTest {
 
     private static final String LOGIN_PATH = "/api/admin/auth/login";
     private static final String REFRESH_PATH = "/api/admin/auth/refresh";
+    private static final String REGISTER_PATH = "/api/admin/auth/register";
+    private static final String VERIFY_PATH = "/api/admin/auth/verify-email";
 
     @Autowired
     private MockMvc mockMvc;
@@ -50,6 +53,9 @@ class AuthIntegrationTest {
 
     @Autowired
     private SysUserRepository sysUserRepository;
+
+    @Autowired
+    private RegistrationPendingStore registrationPendingStore;
 
     @Autowired
     private PasswordEncoder passwordEncoder;
@@ -186,5 +192,85 @@ class AuthIntegrationTest {
                         .content("{}"))
                 .andExpect(status().isBadRequest())
                 .andExpect(jsonPath("$.code").value(400));
+    }
+
+    @Test
+    void register_loginBeforeVerify_returns401() throws Exception {
+        String code = "reg" + UUID.randomUUID().toString().replace("-", "").substring(0, 12);
+        String username = "adm_" + code;
+        String password = "Secret123!";
+        mockMvc.perform(post(REGISTER_PATH)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(Map.of(
+                                "organizationName", "New Org",
+                                "organizationCode", code,
+                                "adminUsername", username,
+                                "adminPassword", password,
+                                "adminEmail", username + "@example.com"))))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.data.adminUsername").value(username));
+
+        mockMvc.perform(post(LOGIN_PATH)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(Map.of("username", username, "password", password))))
+                .andExpect(status().isUnauthorized())
+                .andExpect(jsonPath("$.code").value(401));
+    }
+
+    @Test
+    void register_verify_login_returns200() throws Exception {
+        String orgCode = "rg2" + UUID.randomUUID().toString().replace("-", "").substring(0, 11);
+        String username = "adm2_" + orgCode;
+        String password = "Secret123!";
+        String adminEmail = username + "@example.com";
+        mockMvc.perform(post(REGISTER_PATH)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(Map.of(
+                                "organizationName", "Other Org",
+                                "organizationCode", orgCode,
+                                "adminUsername", username,
+                                "adminPassword", password,
+                                "adminEmail", adminEmail))))
+                .andExpect(status().isOk());
+
+        String verifyCode = registrationPendingStore.findByEmail(adminEmail.toLowerCase())
+                .orElseThrow()
+                .verificationCode();
+
+        mockMvc.perform(post(VERIFY_PATH)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(Map.of(
+                                "email", adminEmail,
+                                "code", verifyCode))))
+                .andExpect(status().isOk());
+
+        mockMvc.perform(post(LOGIN_PATH)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(Map.of("username", username, "password", password))))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.data.username").value(username));
+    }
+
+    @Test
+    void register_duplicateOrgCode_returns409() throws Exception {
+        String code = "dup" + UUID.randomUUID().toString().replace("-", "").substring(0, 11);
+        String body1 = objectMapper.writeValueAsString(Map.of(
+                "organizationName", "Dup Org",
+                "organizationCode", code,
+                "adminUsername", "user_a_" + code,
+                "adminPassword", "Secret123!",
+                "adminEmail", "a_" + code + "@example.com"));
+        String body2 = objectMapper.writeValueAsString(Map.of(
+                "organizationName", "Dup Org Two",
+                "organizationCode", code,
+                "adminUsername", "user_b_" + code,
+                "adminPassword", "Secret123!",
+                "adminEmail", "b_" + code + "@example.com"));
+
+        mockMvc.perform(post(REGISTER_PATH).contentType(MediaType.APPLICATION_JSON).content(body1))
+                .andExpect(status().isOk());
+        mockMvc.perform(post(REGISTER_PATH).contentType(MediaType.APPLICATION_JSON).content(body2))
+                .andExpect(status().isConflict())
+                .andExpect(jsonPath("$.code").value(409));
     }
 }
