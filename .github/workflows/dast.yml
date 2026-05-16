@@ -27,11 +27,11 @@ jobs:
       - name: Package application
         run: mvn -B package -DskipTests
 
-      - name: Start application (test profile)
+      - name: Start application (dast profile)
         run: |
           JAR=$(ls target/*.jar | grep -v 'original' | head -1)
-          echo "Starting $JAR"
-          java -jar "$JAR" --spring.profiles.active=test --server.port=8080 &
+          echo "Starting $JAR with profile dast (embedded H2)"
+          java -jar "$JAR" --spring.profiles.active=dast --server.port=8080 > app.log 2>&1 &
           echo $! > app.pid
           for i in $(seq 1 40); do
             code=$(curl -s -o /dev/null -w "%{http_code}" http://127.0.0.1:8080/api/admin/auth/login || echo "000")
@@ -43,6 +43,7 @@ jobs:
             sleep 3
           done
           echo "Application failed to start"
+          tail -n 200 app.log || true
           exit 1
 
       - name: ZAP Baseline Scan
@@ -60,6 +61,7 @@ jobs:
             report_html.html
             report_md.md
             report_json.json
+            app.log
 
       - name: Stop application
         if: always()
