@@ -1,0 +1,18 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+  将 Maven Central 镜像到阿里云，避免访问 repo.maven.apache.org 时出现 TLS 握手失败等问题。
+  若你依赖 ~/.m2/settings.xml 里的私服账号，可删除本项目的 .mvn/maven.config，
+  或把下方 <mirror> 合并进自己的 settings.xml。
+-->
+<settings xmlns="http://maven.apache.org/SETTINGS/1.2.0"
+          xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+          xsi:schemaLocation="http://maven.apache.org/SETTINGS/1.2.0 https://maven.apache.org/xsd/settings-1.2.0.xsd">
+  <mirrors>
+    <mirror>
+      <id>aliyun-central</id>
+      <mirrorOf>central</mirrorOf>
+      <name>Aliyun Maven Central</name>
+      <url>https://maven.aliyun.com/repository/central</url>
+    </mirror>
+  </mirrors>
+</settings>
