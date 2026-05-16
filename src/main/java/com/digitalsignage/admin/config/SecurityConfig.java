@@ -2,6 +2,8 @@ package com.digitalsignage.admin.config;
 
 import com.digitalsignage.admin.security.DeviceAuthenticationFilter;
 import com.digitalsignage.admin.security.JwtAuthenticationFilter;
+import com.digitalsignage.admin.security.permission.DeviceAuthorizationManager;
+import com.digitalsignage.admin.security.permission.DynamicAuthorizationManager;
 import lombok.RequiredArgsConstructor;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
@@ -23,6 +25,8 @@ public class SecurityConfig {
     private final DeviceAuthenticationFilter deviceAuthenticationFilter;
     private final RestAuthenticationEntryPoint authenticationEntryPoint;
     private final RestAccessDeniedHandler accessDeniedHandler;
+    private final DynamicAuthorizationManager dynamicAuthorizationManager;
+    private final DeviceAuthorizationManager deviceAuthorizationManager;
 
     @Value("${app.api.device-prefix}")
     private String devicePrefix;
@@ -45,25 +49,11 @@ public class SecurityConfig {
                                 "/api/admin/auth/register",
                                 "/api/admin/auth/verify-email")
                         .permitAll()
-                        .requestMatchers(HttpMethod.GET, "/api/admin/users/me").authenticated()
-                        .requestMatchers(HttpMethod.GET, "/api/admin/users").hasAnyRole("ADMIN", "EDITOR", "VIEWER")
-                        .requestMatchers(HttpMethod.GET, "/api/admin/users/*").hasAnyRole("ADMIN", "EDITOR", "VIEWER")
-                        .requestMatchers(HttpMethod.POST, "/api/admin/users").hasRole("ADMIN")
-                        .requestMatchers(HttpMethod.PUT, "/api/admin/users/*").hasRole("ADMIN")
-                        .requestMatchers(HttpMethod.DELETE, "/api/admin/users/*").hasRole("ADMIN")
-                        .requestMatchers(HttpMethod.POST, "/api/admin/media/*").hasAnyRole("ADMIN", "EDITOR")
-                        .requestMatchers(HttpMethod.GET, "/api/admin/media").hasAnyRole("ADMIN", "EDITOR", "VIEWER")
-                        .requestMatchers(HttpMethod.GET, "/api/admin/media/*").hasAnyRole("ADMIN", "EDITOR", "VIEWER")
-                        .requestMatchers(HttpMethod.DELETE, "/api/admin/media/*").hasAnyRole("ADMIN", "EDITOR")
-                        .requestMatchers(HttpMethod.POST, "/api/admin/**").hasAnyRole("ADMIN", "EDITOR")
-                        .requestMatchers(HttpMethod.PUT, "/api/admin/**").hasAnyRole("ADMIN", "EDITOR")
-                        .requestMatchers(HttpMethod.PATCH, "/api/admin/**").hasAnyRole("ADMIN", "EDITOR")
-                        .requestMatchers(HttpMethod.DELETE, "/api/admin/**").hasAnyRole("ADMIN", "EDITOR")
-                        .anyRequest().authenticated())
+                        .requestMatchers(devicePrefix + "/**").access(deviceAuthorizationManager)
+                        .anyRequest().access(dynamicAuthorizationManager))
                 .httpBasic(AbstractHttpConfigurer::disable)
                 .formLogin(AbstractHttpConfigurer::disable)
                 .addFilterBefore(jwtAuthenticationFilter, UsernamePasswordAuthenticationFilter.class)
-                // Resolve device Bearer tokens before JWT parsing so hex device tokens are never treated as JWTs.
                 .addFilterBefore(deviceAuthenticationFilter, JwtAuthenticationFilter.class);
         return http.build();
     }

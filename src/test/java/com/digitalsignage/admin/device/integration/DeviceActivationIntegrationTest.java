@@ -6,7 +6,7 @@ import com.digitalsignage.admin.entity.Organization;
 import com.digitalsignage.admin.screen.dto.CreateScreenRequest;
 import com.digitalsignage.admin.security.AdminPrincipal;
 import com.digitalsignage.admin.security.JwtService;
-import com.digitalsignage.admin.screen.repository.ScreenRepository;
+import com.digitalsignage.admin.testsupport.IntegrationTestDataCleaner;
 import com.digitalsignage.admin.user.repository.OrganizationRepository;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -43,15 +43,14 @@ class DeviceActivationIntegrationTest {
     private OrganizationRepository organizationRepository;
 
     @Autowired
-    private ScreenRepository screenRepository;
+    private IntegrationTestDataCleaner integrationTestDataCleaner;
 
     @MockBean
     private JwtService jwtService;
 
     @BeforeEach
     void setUp() {
-        screenRepository.deleteAll();
-        organizationRepository.deleteAll();
+        integrationTestDataCleaner.clearTenantData();
 
         Organization organization = new Organization();
         organization.setName("Org Device IT");

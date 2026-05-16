@@ -1,6 +1,5 @@
 package com.digitalsignage.admin.schedule.service.impl;
 
-import com.digitalsignage.admin.common.enums.ScheduleStatus;
 import com.digitalsignage.admin.common.enums.ScheduleTargetType;
 import com.digitalsignage.admin.common.exception.BusinessException;
 import com.digitalsignage.admin.device.dto.ActiveConfigResponse;
@@ -33,7 +32,6 @@ import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Objects;
-import java.util.Optional;
 
 @Service
 @RequiredArgsConstructor

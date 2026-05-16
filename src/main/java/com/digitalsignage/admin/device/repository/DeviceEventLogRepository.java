@@ -1,6 +1,5 @@
 package com.digitalsignage.admin.device.repository;
 
-import com.digitalsignage.admin.common.enums.DeviceEventLevel;
 import com.digitalsignage.admin.entity.DeviceEventLog;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
