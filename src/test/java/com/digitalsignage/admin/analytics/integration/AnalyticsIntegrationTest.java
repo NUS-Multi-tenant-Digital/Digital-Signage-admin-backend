@@ -5,6 +5,7 @@ import com.digitalsignage.admin.common.enums.UserRole;
 import com.digitalsignage.admin.entity.Organization;
 import com.digitalsignage.admin.security.AdminPrincipal;
 import com.digitalsignage.admin.security.JwtService;
+import com.digitalsignage.admin.testsupport.IntegrationTestDataCleaner;
 import com.digitalsignage.admin.user.repository.OrganizationRepository;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -32,12 +33,15 @@ class AnalyticsIntegrationTest {
     @Autowired
     private OrganizationRepository organizationRepository;
 
+    @Autowired
+    private IntegrationTestDataCleaner integrationTestDataCleaner;
+
     @MockBean
     private JwtService jwtService;
 
     @BeforeEach
     void setUp() {
-        organizationRepository.deleteAll();
+        integrationTestDataCleaner.clearTenantData();
 
         Organization organization = new Organization();
         organization.setName("Org Analytics");
