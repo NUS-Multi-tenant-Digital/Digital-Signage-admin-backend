@@ -31,6 +31,16 @@
     </repositories>
     <pluginRepositories>
         <pluginRepository>
+            <id>central</id>
+            <url>https://repo.maven.apache.org/maven2</url>
+            <releases>
+                <enabled>true</enabled>
+            </releases>
+            <snapshots>
+                <enabled>false</enabled>
+            </snapshots>
+        </pluginRepository>
+        <pluginRepository>
             <id>aliyun-central</id>
             <url>https://maven.aliyun.com/repository/central</url>
             <releases>
@@ -45,7 +55,7 @@
     <properties>
         <java.version>21</java.version>
         <checkstyle.version>10.18.2</checkstyle.version>
-        <dependency-check.version>11.1.0</dependency-check.version>
+        <dependency-check.version>12.1.0</dependency-check.version>
         <dependency-check.fail.cvss>7</dependency-check.fail.cvss>
     </properties>
 
