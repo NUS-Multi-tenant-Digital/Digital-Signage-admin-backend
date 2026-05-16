@@ -5,4 +5,5 @@
 <suppressions>
     <!-- Spring Data JPA derived query method names use underscores by convention. -->
     <suppress checks="MethodName" files="[/\\]repository[/\\].*\.java"/>
+    <suppress checks="ParameterNumber" files="IntegrationTestDataCleaner\.java"/>
 </suppressions>

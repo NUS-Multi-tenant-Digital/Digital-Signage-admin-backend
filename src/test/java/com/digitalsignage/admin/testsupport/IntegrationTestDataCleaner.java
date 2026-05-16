@@ -13,30 +13,42 @@ import com.digitalsignage.admin.schedule.repository.ScheduleRepository;
 import com.digitalsignage.admin.screengroup.repository.ScreenGroupRepository;
 import com.digitalsignage.admin.screen.repository.ScreenRepository;
 import com.digitalsignage.admin.user.repository.OrganizationRepository;
-import lombok.RequiredArgsConstructor;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
 
 /**
- * Deletes tenant-scoped rows in FK-safe order for {@code @SpringBootTest} integration tests
+ * Deletes tenant-scoped rows in FK-safe order for SpringBootTest integration tests
  * that share one in-memory database across test classes.
  */
 @Component
-@RequiredArgsConstructor
 public class IntegrationTestDataCleaner {
 
-    private final PlaybackLogRepository playbackLogRepository;
-    private final DeviceEventLogRepository deviceEventLogRepository;
-    private final ScheduleRepository scheduleRepository;
-    private final PlaylistItemRepository playlistItemRepository;
-    private final ScreenRepository screenRepository;
-    private final LayoutRegionComponentRepository layoutRegionComponentRepository;
-    private final LayoutRegionRepository layoutRegionRepository;
-    private final LayoutRepository layoutRepository;
-    private final PlaylistRepository playlistRepository;
-    private final MediaRepository mediaRepository;
-    private final SysUserRepository sysUserRepository;
-    private final ScreenGroupRepository screenGroupRepository;
-    private final OrganizationRepository organizationRepository;
+    @Autowired
+    private PlaybackLogRepository playbackLogRepository;
+    @Autowired
+    private DeviceEventLogRepository deviceEventLogRepository;
+    @Autowired
+    private ScheduleRepository scheduleRepository;
+    @Autowired
+    private PlaylistItemRepository playlistItemRepository;
+    @Autowired
+    private ScreenRepository screenRepository;
+    @Autowired
+    private LayoutRegionComponentRepository layoutRegionComponentRepository;
+    @Autowired
+    private LayoutRegionRepository layoutRegionRepository;
+    @Autowired
+    private LayoutRepository layoutRepository;
+    @Autowired
+    private PlaylistRepository playlistRepository;
+    @Autowired
+    private MediaRepository mediaRepository;
+    @Autowired
+    private SysUserRepository sysUserRepository;
+    @Autowired
+    private ScreenGroupRepository screenGroupRepository;
+    @Autowired
+    private OrganizationRepository organizationRepository;
 
     public void clearTenantData() {
         playbackLogRepository.deleteAll();
