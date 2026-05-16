@@ -4,7 +4,6 @@ import com.digitalsignage.admin.common.enums.PlaylistStatus;
 import com.digitalsignage.admin.common.exception.GlobalExceptionHandler;
 import com.digitalsignage.admin.playlist.dto.CreatePlaylistRequest;
 import com.digitalsignage.admin.playlist.dto.PlaylistItemRequest;
-import com.digitalsignage.admin.playlist.dto.PlaylistItemRequest;
 import com.digitalsignage.admin.playlist.dto.PlaylistResponse;
 import com.digitalsignage.admin.playlist.dto.ReorderPlaylistItemsRequest;
 import com.digitalsignage.admin.playlist.dto.UpdatePlaylistRequest;
