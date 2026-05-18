@@ -100,25 +100,4 @@ CREATE TABLE IF NOT EXISTS command_acks (
     CONSTRAINT fk_command_acks_screen FOREIGN KEY (screen_id) REFERENCES screen (id) ON DELETE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
 
-CREATE TABLE IF NOT EXISTS device_events (
-    id BIGINT NOT NULL AUTO_INCREMENT,
-    event_id VARCHAR(64) NOT NULL,
-    screen_id BIGINT NOT NULL,
-    event_type VARCHAR(64) NOT NULL,
-    manifest_id VARCHAR(64) NULL,
-    manifest_version BIGINT NULL,
-    media_id BIGINT NULL,
-    playlist_item_id VARCHAR(64) NULL,
-    error_code VARCHAR(64) NULL,
-    error_message VARCHAR(512) NULL,
-    extra_json JSON NULL,
-    event_timestamp BIGINT NOT NULL,
-    created_at DATETIME(6) NOT NULL DEFAULT CURRENT_TIMESTAMP(6),
-    PRIMARY KEY (id),
-    UNIQUE KEY uk_device_events_event_id (event_id),
-    KEY idx_device_events_screen_timestamp (screen_id, event_timestamp),
-    KEY idx_device_events_event_type (event_type),
-    CONSTRAINT fk_device_events_screen FOREIGN KEY (screen_id) REFERENCES screen (id) ON DELETE CASCADE,
-    CONSTRAINT fk_device_events_manifest FOREIGN KEY (manifest_id) REFERENCES manifests (manifest_id) ON DELETE SET NULL ON UPDATE CASCADE,
-    CONSTRAINT fk_device_events_media FOREIGN KEY (media_id) REFERENCES media (id) ON DELETE SET NULL
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+-- device_event_log: owned by admin-backend V1, reused by player-server
