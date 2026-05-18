@@ -7,6 +7,7 @@ import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.HttpHeaders;
 import org.springframework.lang.NonNull;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
@@ -14,6 +15,7 @@ import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Component;
 import org.springframework.util.StringUtils;
 import org.springframework.web.filter.OncePerRequestFilter;
+import org.springframework.web.util.UrlPathHelper;
 
 import java.io.IOException;
 
@@ -24,7 +26,21 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
 
     private static final String BEARER_PREFIX = "Bearer ";
 
+    private static final UrlPathHelper PATH_HELPER = new UrlPathHelper();
+
     private final JwtService jwtService;
+
+    @Value("${app.api.device-prefix}")
+    private String devicePrefix;
+
+    /**
+     * Device routes use {@link DeviceAuthenticationFilter}; never interpret Bearer as JWT here.
+     */
+    @Override
+    protected boolean shouldNotFilter(@NonNull HttpServletRequest request) {
+        String path = PATH_HELPER.getPathWithinApplication(request);
+        return path.equals(devicePrefix) || path.startsWith(devicePrefix + "/");
+    }
 
     @Override
     protected void doFilterInternal(

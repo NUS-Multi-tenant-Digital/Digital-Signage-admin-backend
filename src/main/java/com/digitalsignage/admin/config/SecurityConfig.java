@@ -53,6 +53,7 @@ public class SecurityConfig {
                         .anyRequest().access(dynamicAuthorizationManager))
                 .httpBasic(AbstractHttpConfigurer::disable)
                 .formLogin(AbstractHttpConfigurer::disable)
+                // Resolve device Bearer tokens before JWT parsing; JwtAuthenticationFilter skips /api/device/**.
                 .addFilterBefore(jwtAuthenticationFilter, UsernamePasswordAuthenticationFilter.class)
                 .addFilterBefore(deviceAuthenticationFilter, JwtAuthenticationFilter.class);
         return http.build();

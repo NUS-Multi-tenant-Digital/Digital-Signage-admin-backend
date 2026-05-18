@@ -1,6 +1,7 @@
 package com.digitalsignage.admin.security;
 
 import com.digitalsignage.admin.common.enums.ActivationStatus;
+import com.digitalsignage.admin.entity.Organization;
 import com.digitalsignage.admin.screen.repository.ScreenRepository;
 import jakarta.servlet.FilterChain;
 import jakarta.servlet.ServletException;
@@ -17,6 +18,11 @@ import org.springframework.web.filter.OncePerRequestFilter;
 
 import java.io.IOException;
 
+/**
+ * Authenticates device APIs via {@code Authorization: Bearer &lt;deviceToken&gt;}.
+ * Registered as a {@link org.springframework.context.annotation.Bean} in
+ * {@link com.digitalsignage.admin.config.DeviceAuthenticationFilterConfig}.
+ */
 public class DeviceAuthenticationFilter extends OncePerRequestFilter {
 
     private static final String BEARER_PREFIX = "Bearer ";
@@ -29,20 +35,11 @@ public class DeviceAuthenticationFilter extends OncePerRequestFilter {
         this.devicePrefix = devicePrefix;
     }
 
-    @Override
-    protected boolean shouldNotFilter(@NonNull HttpServletRequest request) {
-        String path = resolveRequestPath(request);
-        if (!path.startsWith(devicePrefix)) {
-            return true;
-        }
-        String activatePath = devicePrefix + "/activate";
-        return path.equals(activatePath);
-    }
-
     /**
-     * MockMvc often leaves {@link HttpServletRequest#getServletPath()} empty; URI + context path works for tests and Tomcat.
+     * MockMvc often leaves {@link HttpServletRequest#getServletPath()} empty; URI minus context works for tests and Tomcat.
+     * Package-private for tests in the same package.
      */
-    private static String resolveRequestPath(HttpServletRequest request) {
+    static String resolveRequestPath(HttpServletRequest request) {
         String uri = request.getRequestURI();
         String ctx = request.getContextPath();
         if (ctx != null && !ctx.isEmpty() && uri.startsWith(ctx)) {
@@ -56,6 +53,13 @@ public class DeviceAuthenticationFilter extends OncePerRequestFilter {
             @NonNull HttpServletRequest request,
             @NonNull HttpServletResponse response,
             @NonNull FilterChain filterChain) throws ServletException, IOException {
+        String path = resolveRequestPath(request);
+        String activatePath = devicePrefix + "/activate";
+        if (!path.startsWith(devicePrefix) || path.equals(activatePath)) {
+            filterChain.doFilter(request, response);
+            return;
+        }
+
         Authentication existing = SecurityContextHolder.getContext().getAuthentication();
         if (existing != null && existing.isAuthenticated()
                 && existing.getPrincipal() instanceof AdminPrincipal) {
@@ -79,9 +83,13 @@ public class DeviceAuthenticationFilter extends OncePerRequestFilter {
             if (screen.getActivationStatus() != ActivationStatus.ACTIVATED) {
                 return;
             }
+            Organization org = screen.getOrganization();
+            if (org == null) {
+                return;
+            }
             DevicePrincipal principal = DevicePrincipal.builder()
                     .screenId(screen.getId())
-                    .organizationId(screen.getOrganization().getId())
+                    .organizationId(org.getId())
                     .deviceCode(screen.getDeviceCode())
                     .build();
             UsernamePasswordAuthenticationToken authentication = new UsernamePasswordAuthenticationToken(
