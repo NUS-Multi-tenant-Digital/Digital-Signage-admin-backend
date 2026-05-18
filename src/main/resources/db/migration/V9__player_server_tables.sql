@@ -13,7 +13,7 @@ CREATE TABLE IF NOT EXISTS player_configs (
     enable_watchdog TINYINT(1) NOT NULL DEFAULT 1,
     enable_screenshot TINYINT(1) NOT NULL DEFAULT 0,
     log_level VARCHAR(16) NOT NULL DEFAULT 'info',
-    supported_asset_types_json CLOB NOT NULL,
+    supported_asset_types_json TEXT NOT NULL,
     created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP NULL DEFAULT CURRENT_TIMESTAMP,
     PRIMARY KEY (id),
@@ -31,10 +31,10 @@ CREATE TABLE IF NOT EXISTS manifests (
     valid_from BIGINT NOT NULL,
     valid_to BIGINT NOT NULL DEFAULT 0,
     ttl_sec INT NOT NULL DEFAULT 3600,
-    template_config_json CLOB NOT NULL,
-    playback_plan_json CLOB NOT NULL,
-    cache_policy_json CLOB NOT NULL,
-    fallback_policy_json CLOB NOT NULL,
+    template_config_json TEXT NOT NULL,
+    playback_plan_json TEXT NOT NULL,
+    cache_policy_json TEXT NOT NULL,
+    fallback_policy_json TEXT NOT NULL,
     checksum VARCHAR(64) NOT NULL,
     generated_at BIGINT NOT NULL,
     is_active TINYINT(1) NOT NULL DEFAULT 1,
@@ -70,7 +70,7 @@ CREATE TABLE IF NOT EXISTS commands (
     screen_id BIGINT NOT NULL,
     type VARCHAR(64) NOT NULL,
     status VARCHAR(32) NOT NULL DEFAULT 'pending',
-    payload_json CLOB NOT NULL,
+    payload_json TEXT NOT NULL,
     issued_at BIGINT NOT NULL,
     expire_at BIGINT NOT NULL,
     created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
@@ -108,7 +108,7 @@ ALTER TABLE device_event_log ADD COLUMN media_id BIGINT NULL;
 ALTER TABLE device_event_log ADD COLUMN playlist_item_id VARCHAR(64) NULL;
 ALTER TABLE device_event_log ADD COLUMN error_code VARCHAR(64) NULL;
 ALTER TABLE device_event_log ADD COLUMN error_message VARCHAR(512) NULL;
-ALTER TABLE device_event_log ADD COLUMN extra_json CLOB NULL;
+ALTER TABLE device_event_log ADD COLUMN extra_json TEXT NULL;
 ALTER TABLE device_event_log ADD COLUMN event_timestamp BIGINT NULL;
 CREATE UNIQUE INDEX IF NOT EXISTS uk_device_event_log_event_id ON device_event_log (event_id);
 CREATE INDEX IF NOT EXISTS idx_device_event_log_screen_timestamp ON device_event_log (screen_id, event_timestamp);
