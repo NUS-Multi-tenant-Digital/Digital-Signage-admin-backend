@@ -45,6 +45,33 @@ public class DeviceEventLog {
     @Column(length = 2048)
     private String message;
 
+    @Column(name = "event_id", unique = true, length = 64)
+    private String eventId;
+
+    @Column(name = "manifest_id", length = 64)
+    private String manifestId;
+
+    @Column(name = "manifest_version")
+    private Long manifestVersion;
+
+    @Column(name = "media_id")
+    private Long mediaId;
+
+    @Column(name = "playlist_item_id", length = 64)
+    private String playlistItemId;
+
+    @Column(name = "error_code", length = 64)
+    private String errorCode;
+
+    @Column(name = "error_message", length = 512)
+    private String errorMessage;
+
+    @Column(name = "extra_json", columnDefinition = "TEXT")
+    private String extraJson;
+
+    @Column(name = "event_timestamp")
+    private Long eventTimestamp;
+
     @CreatedDate
     @Column(name = "created_at", nullable = false, updatable = false)
     private LocalDateTime createdAt;

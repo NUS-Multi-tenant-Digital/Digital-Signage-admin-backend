@@ -26,7 +26,7 @@ public class ScreenLogServiceImpl implements ScreenLogService {
     @Transactional(readOnly = true)
     public Page<DeviceEventLogResponse> listEvents(Long screenId, Pageable pageable) {
         assertScreenInTenant(screenId);
-        return deviceEventLogRepository.findByScreen_IdOrderByCreatedAtDesc(screenId, pageable)
+        return deviceEventLogRepository.findByScreen_IdOrderByEventTimestampDescCreatedAtDesc(screenId, pageable)
                 .map(DeviceEventLogResponse::fromEntity);
     }
 

@@ -11,7 +11,7 @@ import java.time.LocalDateTime;
 
 public interface DeviceEventLogRepository extends JpaRepository<DeviceEventLog, Long> {
 
-    Page<DeviceEventLog> findByScreen_IdOrderByCreatedAtDesc(Long screenId, Pageable pageable);
+    Page<DeviceEventLog> findByScreen_IdOrderByEventTimestampDescCreatedAtDesc(Long screenId, Pageable pageable);
 
     @Query("SELECT COUNT(e) FROM DeviceEventLog e JOIN e.screen s WHERE s.organization.id = :orgId "
             + "AND e.eventLevel IN ('WARN', 'ERROR') AND e.createdAt >= :since")
