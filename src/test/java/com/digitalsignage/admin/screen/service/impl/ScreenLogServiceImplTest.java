@@ -26,6 +26,7 @@ import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageImpl;
 import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Pageable;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.context.SecurityContextHolder;
 
@@ -34,6 +35,8 @@ import java.util.Optional;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.when;
 
 @ExtendWith(MockitoExtension.class)
@@ -85,7 +88,8 @@ class ScreenLogServiceImplTest {
         log.setEventLevel(DeviceEventLevel.INFO);
 
         when(screenRepository.findByIdAndOrganization_Id(1L, ORG_ID)).thenReturn(Optional.of(screen));
-        when(deviceEventLogRepository.findByScreen_IdOrderByCreatedAtDesc(1L, PageRequest.of(0, 20)))
+        when(deviceEventLogRepository.findByScreen_IdOrderByEventTimestampDescCreatedAtDesc(
+                eq(1L), any(Pageable.class)))
                 .thenReturn(new PageImpl<>(List.of(log)));
 
         Page<DeviceEventLogResponse> page = screenLogService.listEvents(1L, PageRequest.of(0, 20));
@@ -126,7 +130,7 @@ class ScreenLogServiceImplTest {
         log.setPlaylist(playlist);
 
         when(screenRepository.findByIdAndOrganization_Id(1L, ORG_ID)).thenReturn(Optional.of(screen));
-        when(playbackLogRepository.findByScreen_IdOrderByPlayedAtDesc(1L, PageRequest.of(0, 10)))
+        when(playbackLogRepository.findByScreen_IdOrderByPlayedAtDesc(eq(1L), any(Pageable.class)))
                 .thenReturn(new PageImpl<>(List.of(log)));
 
         Page<PlaybackLogAdminResponse> page = screenLogService.listPlaybackLogs(1L, PageRequest.of(0, 10));
