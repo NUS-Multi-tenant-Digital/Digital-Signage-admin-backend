@@ -32,6 +32,7 @@ import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
+// CI/CD demo: trivial change to trigger GitHub Actions on push
 @ExtendWith(MockitoExtension.class)
 class UserServiceImplTest {
 
