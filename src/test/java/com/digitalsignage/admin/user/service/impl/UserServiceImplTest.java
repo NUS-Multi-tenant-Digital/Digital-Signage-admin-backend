@@ -32,8 +32,6 @@ import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
-// CI/CD demo: trivial change to trigger GitHub Actions on push
-// Pipeline runs Checkstyle, unit tests, CodeQL, and DAST on each push/PR
 @ExtendWith(MockitoExtension.class)
 class UserServiceImplTest {
 
