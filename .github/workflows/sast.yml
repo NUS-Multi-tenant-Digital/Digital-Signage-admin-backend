@@ -31,10 +31,8 @@ jobs:
             owasp-nvd-${{ runner.os }}-
 
       - name: OWASP Dependency-Check
-        # pom.xml sets autoUpdate=false for fast local runs; CI must seed NVD DB on cache miss.
-        run: >
-          mvn -s .github/maven-ci-settings.xml -B -Psecurity dependency-check:check
-          -Ddependency-check.autoUpdate=true
+        # Plugin user property is "autoUpdate"; pom default is false — override for CI NVD seed/cache miss.
+        run: mvn -s .github/maven-ci-settings.xml -B -Psecurity dependency-check:check -Ddependency-check.autoUpdate=true -DautoUpdate=true
         env:
           NVD_API_KEY: ${{ secrets.NVD_API_KEY }}
 
