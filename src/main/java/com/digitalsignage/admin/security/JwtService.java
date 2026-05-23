@@ -43,7 +43,7 @@ public class JwtService {
 
     public Long parseRefreshTokenUserId(String token) {
         Claims claims = parseAndValidate(token, TYP_REFRESH);
-        return Long.parseLong(claims.getSubject());
+        return parseUserId(claims.getSubject());
     }
 
     private Claims parseAndValidate(String token, String expectedTyp) {
@@ -66,7 +66,7 @@ public class JwtService {
     }
 
     private AdminPrincipal toPrincipal(Claims claims) {
-        Long userId = Long.parseLong(claims.getSubject());
+        Long userId = parseUserId(claims.getSubject());
         Long orgId = claims.get(CLAIM_ORG_ID, Long.class);
         String username = claims.get("username", String.class);
         UserRole role = UserRole.valueOf(claims.get(CLAIM_ROLE, String.class));
@@ -99,6 +99,14 @@ public class JwtService {
             throw new IllegalStateException("app.jwt.secret must be at least 32 bytes for HS256");
         }
         return Keys.hmacShaKeyFor(bytes);
+    }
+
+    private static Long parseUserId(String subject) {
+        try {
+            return Long.parseLong(subject);
+        } catch (NumberFormatException e) {
+            throw new BusinessException(401, "invalid token");
+        }
     }
 
     private static long minutesToMillis(int minutes) {

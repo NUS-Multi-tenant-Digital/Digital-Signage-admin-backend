@@ -1,5 +1,6 @@
 package com.digitalsignage.admin.auth.pending;
 
+import com.digitalsignage.admin.common.util.LogSanitizer;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -77,7 +78,7 @@ public class InMemoryRegistrationPendingStore implements RegistrationPendingStor
             }
             return Optional.of(p);
         } catch (Exception e) {
-            log.warn("Corrupt pending registration for {}", normalizedEmail, e);
+            log.warn("Corrupt pending registration for {}", LogSanitizer.sanitize(normalizedEmail), e);
             emailToJson.remove(normalizedEmail);
             return Optional.empty();
         }
