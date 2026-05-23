@@ -13,6 +13,7 @@ import com.digitalsignage.admin.playlist.dto.CreatePlaylistRequest;
 import com.digitalsignage.admin.playlist.dto.PlaylistItemRequest;
 import com.digitalsignage.admin.playlist.dto.PlaylistResponse;
 import com.digitalsignage.admin.playlist.dto.ReorderPlaylistItemsRequest;
+import com.digitalsignage.admin.playlist.dto.UpdatePlaylistRequest;
 import com.digitalsignage.admin.playlist.repository.PlaylistItemRepository;
 import com.digitalsignage.admin.playlist.repository.PlaylistRepository;
 import com.digitalsignage.admin.schedule.repository.ScheduleRepository;
@@ -145,6 +146,45 @@ class PlaylistServiceImplTest {
     }
 
     @Test
+    void updatePlaylist_success() {
+        UpdatePlaylistRequest request = new UpdatePlaylistRequest();
+        request.setName("Updated");
+        request.setStatus(PlaylistStatus.ACTIVE);
+        PlaylistItemRequest itemReq = new PlaylistItemRequest();
+        itemReq.setMediaId(50L);
+        request.setItems(List.of(itemReq));
+
+        when(playlistRepository.findByIdAndOrganization_Id(1L, ORG_ID)).thenReturn(Optional.of(playlist));
+        when(mediaRepository.findByIdAndOrganization_Id(50L, ORG_ID)).thenReturn(Optional.of(media));
+        when(playlistRepository.findById(1L)).thenReturn(Optional.of(playlist));
+        when(playlistItemRepository.findWithMediaByPlaylist_Id(1L)).thenReturn(List.of());
+
+        PlaylistResponse response = playlistService.updatePlaylist(1L, request);
+
+        assertThat(response.getName()).isEqualTo("Updated");
+        verify(configPushService).notifyPlaylistChanged(1L);
+    }
+
+    @Test
+    void reorderItems_success() {
+        PlaylistItem item = new PlaylistItem();
+        item.setId(10L);
+        item.setPlaylist(playlist);
+
+        when(playlistRepository.findByIdAndOrganization_Id(1L, ORG_ID)).thenReturn(Optional.of(playlist));
+        when(playlistItemRepository.findByPlaylist_IdOrderByOrderIndexAsc(1L)).thenReturn(List.of(item));
+        when(playlistRepository.findById(1L)).thenReturn(Optional.of(playlist));
+        when(playlistItemRepository.findWithMediaByPlaylist_Id(1L)).thenReturn(List.of());
+
+        ReorderPlaylistItemsRequest request = new ReorderPlaylistItemsRequest();
+        request.setItemIdsInOrder(List.of(10L));
+
+        playlistService.reorderItems(1L, request);
+
+        verify(playlistItemRepository).save(item);
+    }
+
+    @Test
     void reorderItems_countMismatch_throws400() {
         when(playlistRepository.findByIdAndOrganization_Id(1L, ORG_ID)).thenReturn(Optional.of(playlist));
         when(playlistItemRepository.findByPlaylist_IdOrderByOrderIndexAsc(1L))
@@ -156,6 +196,17 @@ class PlaylistServiceImplTest {
         assertThatThrownBy(() -> playlistService.reorderItems(1L, request))
                 .isInstanceOf(BusinessException.class)
                 .hasFieldOrPropertyWithValue("code", 400);
+    }
+
+    @Test
+    void deletePlaylist_success() {
+        when(playlistRepository.findByIdAndOrganization_Id(1L, ORG_ID)).thenReturn(Optional.of(playlist));
+        when(scheduleRepository.existsByPlaylist_Id(1L)).thenReturn(false);
+
+        playlistService.deletePlaylist(1L);
+
+        verify(playlistItemRepository).deleteByPlaylist_Id(1L);
+        verify(playlistRepository).delete(playlist);
     }
 
     @Test

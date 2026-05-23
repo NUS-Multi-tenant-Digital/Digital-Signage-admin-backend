@@ -149,6 +149,20 @@ class ScreenServiceImplTest {
     }
 
     @Test
+    void assignGroup_clearsGroup_success() {
+        com.digitalsignage.admin.screen.dto.AssignScreenGroupRequest request =
+                new com.digitalsignage.admin.screen.dto.AssignScreenGroupRequest();
+        request.setScreenGroupId(null);
+
+        when(screenRepository.findByIdAndOrganization_Id(1L, ORG_ID)).thenReturn(Optional.of(screen));
+        when(screenRepository.save(any(Screen.class))).thenAnswer(inv -> inv.getArgument(0));
+
+        ScreenResponse response = screenService.assignGroup(1L, request);
+
+        assertThat(response.getScreenGroupId()).isNull();
+    }
+
+    @Test
     void generateActivationCode_success() {
         when(screenRepository.findByIdAndOrganization_Id(1L, ORG_ID)).thenReturn(Optional.of(screen));
         when(screenRepository.save(any(Screen.class))).thenAnswer(inv -> inv.getArgument(0));

@@ -1,6 +1,7 @@
 package com.digitalsignage.admin.auth.mail;
 
 import com.digitalsignage.admin.auth.config.AppMailProperties;
+import com.digitalsignage.admin.common.util.LogSanitizer;
 import jakarta.mail.internet.MimeMessage;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -33,9 +34,9 @@ public class SmtpEmailVerificationMailer implements EmailVerificationMailer {
             helper.setText(plain, html);
 
             mailSender.send(message);
-            log.debug("Sent verification code email to {}", toEmail);
+            log.debug("Sent verification code email to {}", LogSanitizer.sanitize(toEmail));
         } catch (Exception e) {
-            log.error("Failed to send verification email to {}", toEmail, e);
+            log.error("Failed to send verification email to {}", LogSanitizer.sanitize(toEmail), e);
             throw new IllegalStateException("failed to send verification email", e);
         }
     }

@@ -2,12 +2,14 @@ package com.digitalsignage.admin.device.dto;
 
 import lombok.Builder;
 import lombok.Getter;
+import lombok.ToString;
 
 import java.time.LocalDateTime;
 import java.util.List;
 
 @Getter
 @Builder
+@ToString
 public class ActiveConfigResponse {
 
     private Long scheduleId;
@@ -20,6 +22,7 @@ public class ActiveConfigResponse {
 
     @Getter
     @Builder
+    @ToString
     public static class LayoutPayload {
         private Long id;
         private String name;
@@ -31,6 +34,7 @@ public class ActiveConfigResponse {
 
     @Getter
     @Builder
+    @ToString
     public static class RegionPayload {
         private Long id;
         private String regionName;
@@ -44,6 +48,7 @@ public class ActiveConfigResponse {
 
     @Getter
     @Builder
+    @ToString
     public static class RegionComponentPayload {
         private Long id;
         private String componentType;
@@ -53,6 +58,7 @@ public class ActiveConfigResponse {
 
     @Getter
     @Builder
+    @ToString
     public static class PlaylistPayload {
         private Long id;
         private String name;
@@ -61,6 +67,7 @@ public class ActiveConfigResponse {
 
     @Getter
     @Builder
+    @ToString
     public static class ItemPayload {
         private Long mediaId;
         private String mediaType;

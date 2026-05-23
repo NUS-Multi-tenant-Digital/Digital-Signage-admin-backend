@@ -100,6 +100,15 @@ class UserServiceImplTest {
     }
 
     @Test
+    void getUser_success() {
+        when(sysUserRepository.findByIdAndOrganization_Id(2L, ORG_ID)).thenReturn(Optional.of(existingUser));
+
+        UserResponse response = userService.getUser(2L);
+
+        assertThat(response.getUsername()).isEqualTo("editor");
+    }
+
+    @Test
     void listUsers_success() {
         when(sysUserRepository.findByOrganization_IdOrderByUsernameAsc(ORG_ID))
                 .thenReturn(List.of(existingUser));
@@ -169,6 +178,21 @@ class UserServiceImplTest {
                 .isInstanceOf(BusinessException.class)
                 .hasFieldOrPropertyWithValue("code", 400);
         verify(sysUserRepository, never()).delete(any());
+    }
+
+    @Test
+    void updateUser_success() {
+        UpdateUserRequest request = new UpdateUserRequest();
+        request.setEmail("updated@example.com");
+        request.setRole(UserRole.ADMIN);
+
+        when(sysUserRepository.findByIdAndOrganization_Id(2L, ORG_ID)).thenReturn(Optional.of(existingUser));
+        when(sysUserRepository.save(any(SysUser.class))).thenAnswer(inv -> inv.getArgument(0));
+        when(sysUserRepository.findByIdWithOrganization(2L)).thenReturn(Optional.of(existingUser));
+
+        UserResponse response = userService.updateUser(2L, request);
+
+        assertThat(response.getEmail()).isEqualTo("updated@example.com");
     }
 
     @Test
