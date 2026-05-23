@@ -4,6 +4,7 @@ import com.digitalsignage.admin.common.enums.ScheduleStatus;
 import com.digitalsignage.admin.common.enums.ScheduleTargetType;
 import com.digitalsignage.admin.common.enums.UserRole;
 import com.digitalsignage.admin.common.exception.BusinessException;
+import com.digitalsignage.admin.device.dto.ActiveConfigResponse;
 import com.digitalsignage.admin.device.service.ActiveConfigService;
 import com.digitalsignage.admin.entity.Layout;
 import com.digitalsignage.admin.entity.Organization;
@@ -16,6 +17,7 @@ import com.digitalsignage.admin.schedule.dto.CreateScheduleRequest;
 import com.digitalsignage.admin.schedule.dto.ScheduleConflictCheckRequest;
 import com.digitalsignage.admin.schedule.dto.ScheduleConflictCheckResponse;
 import com.digitalsignage.admin.schedule.dto.ScheduleResponse;
+import com.digitalsignage.admin.schedule.dto.UpdateScheduleRequest;
 import com.digitalsignage.admin.schedule.repository.ScheduleRepository;
 import com.digitalsignage.admin.screen.repository.ScreenRepository;
 import com.digitalsignage.admin.security.AdminPrincipal;
@@ -207,6 +209,30 @@ class ScheduleServiceImplTest {
     }
 
     @Test
+    void updateSchedule_success() {
+        UpdateScheduleRequest request = new UpdateScheduleRequest();
+        request.setName("Updated Slot");
+        request.setTargetType(ScheduleTargetType.DEFAULT);
+        request.setLayoutId(1L);
+        request.setPlaylistId(2L);
+        request.setStartDatetime(LocalDateTime.of(2026, 6, 1, 8, 0));
+        request.setEndDatetime(LocalDateTime.of(2026, 6, 1, 18, 0));
+        request.setPriority(10);
+        request.setStatus(ScheduleStatus.ACTIVE);
+
+        when(scheduleRepository.findByIdAndOrganization_Id(100L, ORG_ID))
+                .thenReturn(Optional.of(existingSchedule));
+        when(layoutRepository.findByIdAndOrganization_Id(1L, ORG_ID)).thenReturn(Optional.of(layout));
+        when(playlistRepository.findByIdAndOrganization_Id(2L, ORG_ID)).thenReturn(Optional.of(playlist));
+        when(scheduleRepository.save(any(Schedule.class))).thenAnswer(inv -> inv.getArgument(0));
+
+        ScheduleResponse response = scheduleService.updateSchedule(100L, request);
+
+        assertThat(response.getName()).isEqualTo("Updated Slot");
+        verify(configPushService).notifyLayoutChanged(1L);
+    }
+
+    @Test
     void deleteSchedule_success() {
         when(scheduleRepository.findByIdAndOrganization_Id(100L, ORG_ID))
                 .thenReturn(Optional.of(existingSchedule));
@@ -224,6 +250,23 @@ class ScheduleServiceImplTest {
         assertThatThrownBy(() -> scheduleService.getSchedule(99L))
                 .isInstanceOf(BusinessException.class)
                 .hasFieldOrPropertyWithValue("code", 404);
+    }
+
+    @Test
+    void resolveForScreen_success() {
+        Screen screen = new Screen();
+        screen.setId(1L);
+        screen.setOrganization(organization);
+        ActiveConfigResponse config = ActiveConfigResponse.builder().scheduleId(100L).build();
+
+        when(screenRepository.fetchForResolve(1L)).thenReturn(Optional.of(screen));
+        when(activeConfigService.resolve(screen, LocalDateTime.of(2026, 5, 19, 12, 0)))
+                .thenReturn(Optional.of(config));
+
+        ActiveConfigResponse result = scheduleService.resolveForScreen(
+                1L, LocalDateTime.of(2026, 5, 19, 12, 0));
+
+        assertThat(result.getScheduleId()).isEqualTo(100L);
     }
 
     @Test
