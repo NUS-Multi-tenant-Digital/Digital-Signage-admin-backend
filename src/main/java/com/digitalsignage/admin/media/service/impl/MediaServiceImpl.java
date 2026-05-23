@@ -101,7 +101,7 @@ public class MediaServiceImpl implements MediaService {
 
         String fileUrl = request.getFileUrl();
         if (!StringUtils.hasText(fileUrl) && StringUtils.hasText(storageProperties.getPublicBaseUrl())) {
-            String base = storageProperties.getPublicBaseUrl().replaceAll("/+$", "");
+            String base = stripTrailingSlashes(storageProperties.getPublicBaseUrl());
             fileUrl = base + "/" + objectKey;
         }
 
@@ -194,6 +194,17 @@ public class MediaServiceImpl implements MediaService {
             case IMAGE -> "jpg";
             case YOUTUBE -> "txt";
         };
+    }
+
+    private static String stripTrailingSlashes(String value) {
+        if (!StringUtils.hasText(value)) {
+            return value;
+        }
+        int end = value.length();
+        while (end > 0 && value.charAt(end - 1) == '/') {
+            end--;
+        }
+        return value.substring(0, end);
     }
 
     private AdminPrincipal currentPrincipal() {

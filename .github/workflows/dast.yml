@@ -49,7 +49,7 @@ jobs:
           exit 1
 
       - name: ZAP Baseline Scan
-        uses: zaproxy/action-baseline@v0.14.0
+        uses: zaproxy/action-baseline@15c68dd2097803f36bcaf23ef2582c84bccdb72d # v0.14.0
         with:
           target: "http://127.0.0.1:8080"
           cmd_options: "-a"
