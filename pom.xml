@@ -52,6 +52,16 @@
                 <type>pom</type>
                 <scope>import</scope>
             </dependency>
+            <dependency>
+                <groupId>org.eclipse.angus</groupId>
+                <artifactId>angus-mail</artifactId>
+                <version>${angus-mail.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>org.eclipse.angus</groupId>
+                <artifactId>smtp</artifactId>
+                <version>${angus-mail.version}</version>
+            </dependency>
         </dependencies>
     </dependencyManagement>
 
