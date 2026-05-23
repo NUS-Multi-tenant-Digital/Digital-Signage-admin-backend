@@ -36,7 +36,7 @@ jobs:
           cache: maven
 
       - name: Build application JAR
-        run: mvn -B -q package -DskipTests
+        run: mvn -s .github/maven-ci-settings.xml -B -q package -DskipTests
 
       - name: Start app (jmeter profile)
         if: github.event.inputs.base_url == '' || github.event.inputs.base_url == null

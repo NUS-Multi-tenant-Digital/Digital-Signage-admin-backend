@@ -27,7 +27,7 @@ jobs:
           cache: maven
 
       - name: Package application
-        run: mvn -B package -DskipTests
+        run: mvn -s .github/maven-ci-settings.xml -B package -DskipTests
 
       - name: Start application (dast profile)
         run: |

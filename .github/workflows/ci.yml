@@ -24,7 +24,7 @@ jobs:
           cache: maven
 
       - name: Checkstyle
-        run: mvn -B checkstyle:check
+        run: mvn -s .github/maven-ci-settings.xml -B checkstyle:check
 
   build-and-test:
     name: Build & Test
@@ -41,10 +41,10 @@ jobs:
           cache: maven
 
       - name: Build and test
-        run: mvn -B clean test
+        run: mvn -s .github/maven-ci-settings.xml -B clean test
 
       - name: Package
-        run: mvn -B package -DskipTests
+        run: mvn -s .github/maven-ci-settings.xml -B package -DskipTests
 
   docker-build:
     name: Docker Build
