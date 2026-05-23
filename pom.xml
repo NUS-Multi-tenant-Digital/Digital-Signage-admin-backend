@@ -58,6 +58,13 @@
         <dependency-check.version>12.1.0</dependency-check.version>
         <dependency-check.fail.cvss>7</dependency-check.fail.cvss>
         <jacoco.version>0.8.12</jacoco.version>
+        <sonar.organization>nus-multi-tenant-digital</sonar.organization>
+        <sonar.projectKey>NUS-Multi-tenant-Digital_Digital-Signage-admin-backend</sonar.projectKey>
+        <sonar.host.url>https://sonarcloud.io</sonar.host.url>
+        <sonar.java.source>21</sonar.java.source>
+        <sonar.sourceEncoding>UTF-8</sonar.sourceEncoding>
+        <sonar.coverage.jacoco.xmlReportPaths>target/site/jacoco/jacoco.xml</sonar.coverage.jacoco.xmlReportPaths>
+        <sonar.exclusions>**/entity/**,**/dto/**,**/config/**,**/websocket/**,**/media/oss/**,**/auth/pending/**</sonar.exclusions>
     </properties>
 
     <dependencies>
