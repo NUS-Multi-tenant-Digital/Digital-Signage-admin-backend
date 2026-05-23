@@ -23,6 +23,8 @@
         <checkstyle.version>10.18.2</checkstyle.version>
         <dependency-check.version>12.1.0</dependency-check.version>
         <dependency-check.fail.cvss>7</dependency-check.fail.cvss>
+        <!-- false locally; CI overrides via -Ddependency-check.autoUpdate=true (see sast.yml) -->
+        <dependency-check.autoUpdate>false</dependency-check.autoUpdate>
         <jacoco.version>0.8.12</jacoco.version>
         <sonar.organization>nus-multi-tenant-digital</sonar.organization>
         <sonar.projectKey>NUS-Multi-tenant-Digital_Digital-Signage-admin-backend</sonar.projectKey>
@@ -241,7 +243,7 @@
                         <configuration>
                             <failBuildOnCVSS>${dependency-check.fail.cvss}</failBuildOnCVSS>
                             <formats>HTML,JSON</formats>
-                            <autoUpdate>false</autoUpdate>
+                            <autoUpdate>${dependency-check.autoUpdate}</autoUpdate>
                             <nvdValidForHours>168</nvdValidForHours>
                             <suppressionFiles>
                                 <suppressionFile>config/dependency-check-suppressions.xml</suppressionFile>
