@@ -65,6 +65,23 @@ class JwtServiceTest {
     }
 
     @Test
+    void parseAccessToken_nonNumericSubject_throws401() {
+        String token = io.jsonwebtoken.Jwts.builder()
+                .subject("not-a-number")
+                .claim(JwtService.CLAIM_ORG_ID, 10L)
+                .claim("username", "admin")
+                .claim(JwtService.CLAIM_ROLE, UserRole.ADMIN.name())
+                .claim(JwtService.CLAIM_TYP, JwtService.TYP_ACCESS)
+                .signWith(io.jsonwebtoken.security.Keys.hmacShaKeyFor(
+                        "0123456789abcdef0123456789abcdef".getBytes(java.nio.charset.StandardCharsets.UTF_8)))
+                .compact();
+
+        assertThatThrownBy(() -> jwtService.parseAccessToken(token))
+                .isInstanceOf(BusinessException.class)
+                .hasFieldOrPropertyWithValue("code", 401);
+    }
+
+    @Test
     void parseRefreshToken_nonNumericSubject_throws401() {
         String token = io.jsonwebtoken.Jwts.builder()
                 .subject("not-a-number")

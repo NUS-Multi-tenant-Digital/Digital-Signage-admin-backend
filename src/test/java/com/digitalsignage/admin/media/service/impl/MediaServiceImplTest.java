@@ -184,6 +184,35 @@ class MediaServiceImplTest {
     }
 
     @Test
+    void confirm_stripsMultipleTrailingSlashesFromPublicBase() {
+        when(mediaRepository.existsByOrganization_IdAndObjectKey(ORG_ID, "10/key.png")).thenReturn(false);
+        when(organizationRepository.findById(ORG_ID)).thenReturn(Optional.of(organization));
+        when(storageProperties.getPublicBaseUrl()).thenReturn("https://cdn.example.com///");
+        when(mediaRepository.save(any(Media.class))).thenAnswer(inv -> {
+            Media m = inv.getArgument(0);
+            m.setId(51L);
+            return m;
+        });
+        when(mediaRepository.findByIdAndOrganizationId(51L, ORG_ID)).thenAnswer(inv -> {
+            Media m = new Media();
+            m.setId(51L);
+            m.setOrganization(organization);
+            m.setMediaType(MediaType.IMAGE);
+            m.setName("n");
+            m.setObjectKey("10/key.png");
+            m.setFileUrl("https://cdn.example.com/10/key.png");
+            return Optional.of(m);
+        });
+
+        ConfirmMediaRequest req = new ConfirmMediaRequest();
+        req.setObjectKey("10/key.png");
+        req.setName("n");
+        req.setMediaType(MediaType.IMAGE);
+
+        assertThat(mediaService.confirm(req).getFileUrl()).isEqualTo("https://cdn.example.com/10/key.png");
+    }
+
+    @Test
     void confirm_duplicateObjectKey_throws400() {
         when(mediaRepository.existsByOrganization_IdAndObjectKey(ORG_ID, "10/dup")).thenReturn(true);
 

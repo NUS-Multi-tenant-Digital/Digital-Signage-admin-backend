@@ -22,6 +22,7 @@ public class ActiveConfigResponse {
 
     @Getter
     @Builder
+    @ToString
     public static class LayoutPayload {
         private Long id;
         private String name;
@@ -33,6 +34,7 @@ public class ActiveConfigResponse {
 
     @Getter
     @Builder
+    @ToString
     public static class RegionPayload {
         private Long id;
         private String regionName;
@@ -46,6 +48,7 @@ public class ActiveConfigResponse {
 
     @Getter
     @Builder
+    @ToString
     public static class RegionComponentPayload {
         private Long id;
         private String componentType;
@@ -55,6 +58,7 @@ public class ActiveConfigResponse {
 
     @Getter
     @Builder
+    @ToString
     public static class PlaylistPayload {
         private Long id;
         private String name;
@@ -63,6 +67,7 @@ public class ActiveConfigResponse {
 
     @Getter
     @Builder
+    @ToString
     public static class ItemPayload {
         private Long mediaId;
         private String mediaType;
