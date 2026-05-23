@@ -16,8 +16,18 @@
     <name>digital-signage-admin-backend</name>
     <description>Multi-tenant digital signage admin backend</description>
 
-    <!-- 备用：部分环境访问 repo.maven.apache.org TLS 失败时，仍可从镜像解析依赖 -->
+    <!-- Central first (CI/GitHub); Aliyun mirror as fallback for regions where Maven Central is slow. -->
     <repositories>
+        <repository>
+            <id>central</id>
+            <url>https://repo.maven.apache.org/maven2</url>
+            <releases>
+                <enabled>true</enabled>
+            </releases>
+            <snapshots>
+                <enabled>false</enabled>
+            </snapshots>
+        </repository>
         <repository>
             <id>aliyun-central</id>
             <url>https://maven.aliyun.com/repository/central</url>

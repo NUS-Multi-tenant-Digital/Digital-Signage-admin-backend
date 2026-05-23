@@ -1,0 +1,126 @@
+name: Performance (JMeter)
+
+on:
+  workflow_dispatch:
+    inputs:
+      base_url:
+        description: "Target base URL (leave empty to start app on runner)"
+        required: false
+        default: ""
+  push:
+    branches:
+      - main
+      - hxx
+    paths:
+      - "performance/**"
+      - ".github/workflows/performance.yml"
+      - "src/main/java/com/digitalsignage/admin/config/JmeterSeedDataRunner.java"
+      - "src/main/resources/application-jmeter.yml"
+      - "pom.xml"
+
+jobs:
+  jmeter:
+    name: Load & Stress (JMeter)
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up JDK 21
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "21"
+          cache: maven
+
+      - name: Build application JAR
+        run: mvn -B -q package -DskipTests
+
+      - name: Start app (jmeter profile)
+        if: github.event.inputs.base_url == '' || github.event.inputs.base_url == null
+        run: |
+          JAR=$(ls target/*.jar | head -1)
+          nohup java -jar "$JAR" --spring.profiles.active=jmeter > target/app-jmeter.log 2>&1 &
+          echo $! > target/app-jmeter.pid
+          echo "Started $JAR (pid $(cat target/app-jmeter.pid))"
+
+      - name: Wait for API readiness
+        if: github.event.inputs.base_url == '' || github.event.inputs.base_url == null
+        run: |
+          for i in $(seq 1 60); do
+            if curl -sf -X POST "http://localhost:8080/api/admin/auth/login" \
+              -H "Content-Type: application/json" \
+              -d '{"username":"perf_admin","password":"PerfTest123!"}' \
+              | grep -q '"code":200'; then
+              echo "API ready after ${i} attempt(s)"
+              exit 0
+            fi
+            sleep 5
+          done
+          echo "API did not become ready in time"
+          tail -n 200 target/app-jmeter.log || true
+          exit 1
+
+      - name: Resolve BASE_URL
+        run: |
+          if [ -n "${{ github.event.inputs.base_url }}" ]; then
+            echo "BASE_URL=${{ github.event.inputs.base_url }}" >> "$GITHUB_ENV"
+          else
+            echo "BASE_URL=http://localhost:8080" >> "$GITHUB_ENV"
+          fi
+
+      - name: Install JMeter
+        run: |
+          JMETER_VERSION=5.6.3
+          curl -fsSL "https://archive.apache.org/dist/jmeter/binaries/apache-jmeter-${JMETER_VERSION}.tgz" \
+            | tar xz
+          echo "JMETER_HOME=$GITHUB_WORKSPACE/apache-jmeter-${JMETER_VERSION}" >> "$GITHUB_ENV"
+          echo "$GITHUB_WORKSPACE/apache-jmeter-${JMETER_VERSION}/bin" >> "$GITHUB_PATH"
+
+      - name: Run device load & stress
+        run: |
+          mkdir -p target/jmeter-device
+          jmeter -n \
+            -t performance/jmeter/device-load-stress.jmx \
+            -l target/jmeter-device/results.jtl \
+            -e -o target/jmeter-device/report \
+            -JBASE_URL="$BASE_URL" \
+            -JDATA_DIR="$GITHUB_WORKSPACE/performance/jmeter/data"
+
+      - name: Run auth load & stress
+        run: |
+          mkdir -p target/jmeter-auth
+          jmeter -n \
+            -t performance/jmeter/auth-load-stress.jmx \
+            -l target/jmeter-auth/results.jtl \
+            -e -o target/jmeter-auth/report \
+            -JBASE_URL="$BASE_URL"
+
+      - name: Stop app
+        if: always() && (github.event.inputs.base_url == '' || github.event.inputs.base_url == null)
+        run: |
+          if [ -f target/app-jmeter.pid ]; then
+            kill "$(cat target/app-jmeter.pid)" 2>/dev/null || true
+          fi
+
+      - name: Upload JMeter HTML reports
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: jmeter-reports
+          path: |
+            target/jmeter-auth/report/
+            target/jmeter-device/report/
+            target/jmeter-auth/results.jtl
+            target/jmeter-device/results.jtl
+          if-no-files-found: warn
+
+      - name: Upload app log
+        if: failure() && (github.event.inputs.base_url == '' || github.event.inputs.base_url == null)
+        uses: actions/upload-artifact@v4
+        with:
+          name: jmeter-app-log
+          path: target/app-jmeter.log
+          if-no-files-found: ignore
