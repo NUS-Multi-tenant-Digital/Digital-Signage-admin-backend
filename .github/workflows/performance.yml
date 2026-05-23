@@ -74,7 +74,8 @@ jobs:
       - name: Install JMeter
         run: |
           JMETER_VERSION=5.6.3
-          curl -fsSL "https://archive.apache.org/dist/jmeter/binaries/apache-jmeter-${JMETER_VERSION}.tgz" \
+          curl -fsS --proto '=https' --proto-redir '=https' \
+            "https://archive.apache.org/dist/jmeter/binaries/apache-jmeter-${JMETER_VERSION}.tgz" \
             | tar xz
           echo "JMETER_HOME=$GITHUB_WORKSPACE/apache-jmeter-${JMETER_VERSION}" >> "$GITHUB_ENV"
           echo "$GITHUB_WORKSPACE/apache-jmeter-${JMETER_VERSION}/bin" >> "$GITHUB_PATH"
