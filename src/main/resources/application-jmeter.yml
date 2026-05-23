@@ -1,0 +1,8 @@
+# Profile for JMeter / performance CI: in-memory DB, no Redis, deterministic seed data.
+spring:
+  profiles:
+    include: test
+
+app:
+  registration:
+    verification-token-ttl: PT48H
