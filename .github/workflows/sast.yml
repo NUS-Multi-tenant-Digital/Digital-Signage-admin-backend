@@ -32,7 +32,8 @@ jobs:
 
       - name: OWASP Dependency-Check
         # Plugin user property is "autoUpdate"; pom default is false — override for CI NVD seed/cache miss.
-        run: mvn -s .github/maven-ci-settings.xml -B -Psecurity dependency-check:check -Ddependency-check.autoUpdate=true -DautoUpdate=true
+        # OSS Index disabled in pom (401 without Sonatype API token); scan uses NVD + suppressions.
+        run: mvn -s .github/maven-ci-settings.xml -B -Psecurity dependency-check:check -Ddependency-check.autoUpdate=true -DautoUpdate=true -DossindexAnalyzerEnabled=false
         env:
           NVD_API_KEY: ${{ secrets.NVD_API_KEY }}
 

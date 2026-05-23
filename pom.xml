@@ -25,6 +25,8 @@
         <dependency-check.fail.cvss>7</dependency-check.fail.cvss>
         <!-- false locally; CI overrides via -Ddependency-check.autoUpdate=true (see sast.yml) -->
         <dependency-check.autoUpdate>false</dependency-check.autoUpdate>
+        <!-- Sonatype OSS Index requires API token since 2025; NVD is sufficient unless credentials are configured. -->
+        <dependency-check.ossindex.enabled>false</dependency-check.ossindex.enabled>
         <jacoco.version>0.8.12</jacoco.version>
         <sonar.organization>nus-multi-tenant-digital</sonar.organization>
         <sonar.projectKey>NUS-Multi-tenant-Digital_Digital-Signage-admin-backend</sonar.projectKey>
@@ -255,6 +257,7 @@
                             <formats>HTML,JSON</formats>
                             <autoUpdate>${dependency-check.autoUpdate}</autoUpdate>
                             <nvdValidForHours>168</nvdValidForHours>
+                            <ossindexAnalyzerEnabled>${dependency-check.ossindex.enabled}</ossindexAnalyzerEnabled>
                             <suppressionFiles>
                                 <suppressionFile>config/dependency-check-suppressions.xml</suppressionFile>
                             </suppressionFiles>
