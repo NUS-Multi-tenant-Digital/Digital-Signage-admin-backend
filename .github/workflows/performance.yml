@@ -36,7 +36,7 @@ jobs:
           cache: maven
 
       - name: Build application JAR
-        run: mvn -B -q package -DskipTests
+        run: mvn -s .github/maven-ci-settings.xml -B -q package -DskipTests
 
       - name: Start app (jmeter profile)
         if: github.event.inputs.base_url == '' || github.event.inputs.base_url == null
@@ -74,7 +74,8 @@ jobs:
       - name: Install JMeter
         run: |
           JMETER_VERSION=5.6.3
-          curl -fsSL "https://archive.apache.org/dist/jmeter/binaries/apache-jmeter-${JMETER_VERSION}.tgz" \
+          curl -fsS --proto '=https' --proto-redir '=https' \
+            "https://archive.apache.org/dist/jmeter/binaries/apache-jmeter-${JMETER_VERSION}.tgz" \
             | tar xz
           echo "JMETER_HOME=$GITHUB_WORKSPACE/apache-jmeter-${JMETER_VERSION}" >> "$GITHUB_ENV"
           echo "$GITHUB_WORKSPACE/apache-jmeter-${JMETER_VERSION}/bin" >> "$GITHUB_PATH"

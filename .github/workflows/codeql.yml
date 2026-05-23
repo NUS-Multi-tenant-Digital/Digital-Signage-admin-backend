@@ -37,7 +37,7 @@ jobs:
           cache: maven
 
       - name: Compile
-        run: mvn -B compile test-compile -DskipTests
+        run: mvn -s .github/maven-ci-settings.xml -B compile test-compile -DskipTests
 
       - name: Perform CodeQL Analysis
         uses: github/codeql-action/analyze@v3

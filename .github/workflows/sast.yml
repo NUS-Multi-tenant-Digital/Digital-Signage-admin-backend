@@ -31,7 +31,7 @@ jobs:
             owasp-nvd-${{ runner.os }}-
 
       - name: OWASP Dependency-Check
-        run: mvn -B -Psecurity dependency-check:check
+        run: mvn -s .github/maven-ci-settings.xml -B -Psecurity dependency-check:check
         env:
           NVD_API_KEY: ${{ secrets.NVD_API_KEY }}
 

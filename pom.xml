@@ -6,7 +6,7 @@
     <parent>
         <groupId>org.springframework.boot</groupId>
         <artifactId>spring-boot-starter-parent</artifactId>
-        <version>3.3.13</version>
+        <version>3.4.13</version>
         <relativePath/>
     </parent>
 
@@ -16,51 +16,7 @@
     <name>digital-signage-admin-backend</name>
     <description>Multi-tenant digital signage admin backend</description>
 
-    <!-- Central first (CI/GitHub); Aliyun mirror as fallback for regions where Maven Central is slow. -->
-    <repositories>
-        <repository>
-            <id>central</id>
-            <url>https://repo.maven.apache.org/maven2</url>
-            <releases>
-                <enabled>true</enabled>
-            </releases>
-            <snapshots>
-                <enabled>false</enabled>
-            </snapshots>
-        </repository>
-        <repository>
-            <id>aliyun-central</id>
-            <url>https://maven.aliyun.com/repository/central</url>
-            <releases>
-                <enabled>true</enabled>
-            </releases>
-            <snapshots>
-                <enabled>false</enabled>
-            </snapshots>
-        </repository>
-    </repositories>
-    <pluginRepositories>
-        <pluginRepository>
-            <id>central</id>
-            <url>https://repo.maven.apache.org/maven2</url>
-            <releases>
-                <enabled>true</enabled>
-            </releases>
-            <snapshots>
-                <enabled>false</enabled>
-            </snapshots>
-        </pluginRepository>
-        <pluginRepository>
-            <id>aliyun-central</id>
-            <url>https://maven.aliyun.com/repository/central</url>
-            <releases>
-                <enabled>true</enabled>
-            </releases>
-            <snapshots>
-                <enabled>false</enabled>
-            </snapshots>
-        </pluginRepository>
-    </pluginRepositories>
+    <!-- Use Maven Central only. For local mirrors (e.g. Aliyun), configure ~/.m2/settings.xml — do not add mirrors here (CI breaks on 502). -->
 
     <properties>
         <java.version>21</java.version>
@@ -76,7 +32,26 @@
         <sonar.coverage.jacoco.xmlReportPaths>target/site/jacoco/jacoco.xml</sonar.coverage.jacoco.xmlReportPaths>
         <sonar.exclusions>**/entity/**,**/dto/**,**/config/**,**/websocket/**,**/media/oss/**,**/auth/pending/**</sonar.exclusions>
         <log4j2.version>2.25.4</log4j2.version>
+        <!-- Security overrides (fixes OWASP Dependency-Check CVSS &gt;= 7) -->
+        <tomcat.version>10.1.55</tomcat.version>
+        <netty.version>4.1.134.Final</netty.version>
+        <angus-mail.version>2.0.5</angus-mail.version>
+        <jakarta-mail.version>2.1.5</jakarta-mail.version>
+        <opentelemetry.version>1.62.0</opentelemetry.version>
+        <sonar-maven-plugin.version>5.6.0.6792</sonar-maven-plugin.version>
     </properties>
+
+    <dependencyManagement>
+        <dependencies>
+            <dependency>
+                <groupId>io.opentelemetry</groupId>
+                <artifactId>opentelemetry-bom</artifactId>
+                <version>${opentelemetry.version}</version>
+                <type>pom</type>
+                <scope>import</scope>
+            </dependency>
+        </dependencies>
+    </dependencyManagement>
 
     <dependencies>
         <dependency>
@@ -170,6 +145,15 @@
     </dependencies>
 
     <build>
+        <pluginManagement>
+            <plugins>
+                <plugin>
+                    <groupId>org.sonarsource.scanner.maven</groupId>
+                    <artifactId>sonar-maven-plugin</artifactId>
+                    <version>${sonar-maven-plugin.version}</version>
+                </plugin>
+            </plugins>
+        </pluginManagement>
         <plugins>
             <plugin>
                 <groupId>org.springframework.boot</groupId>
@@ -257,6 +241,8 @@
                         <configuration>
                             <failBuildOnCVSS>${dependency-check.fail.cvss}</failBuildOnCVSS>
                             <formats>HTML,JSON</formats>
+                            <autoUpdate>false</autoUpdate>
+                            <nvdValidForHours>168</nvdValidForHours>
                             <suppressionFiles>
                                 <suppressionFile>config/dependency-check-suppressions.xml</suppressionFile>
                             </suppressionFiles>
