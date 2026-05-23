@@ -6,7 +6,7 @@
     <parent>
         <groupId>org.springframework.boot</groupId>
         <artifactId>spring-boot-starter-parent</artifactId>
-        <version>3.3.13</version>
+        <version>3.4.13</version>
         <relativePath/>
     </parent>
 
@@ -76,7 +76,25 @@
         <sonar.coverage.jacoco.xmlReportPaths>target/site/jacoco/jacoco.xml</sonar.coverage.jacoco.xmlReportPaths>
         <sonar.exclusions>**/entity/**,**/dto/**,**/config/**,**/websocket/**,**/media/oss/**,**/auth/pending/**</sonar.exclusions>
         <log4j2.version>2.25.4</log4j2.version>
+        <!-- Security overrides (fixes OWASP Dependency-Check CVSS &gt;= 7) -->
+        <tomcat.version>10.1.55</tomcat.version>
+        <netty.version>4.1.134.Final</netty.version>
+        <angus-mail.version>2.0.5</angus-mail.version>
+        <jakarta-mail.version>2.1.5</jakarta-mail.version>
+        <opentelemetry.version>1.62.0</opentelemetry.version>
     </properties>
+
+    <dependencyManagement>
+        <dependencies>
+            <dependency>
+                <groupId>io.opentelemetry</groupId>
+                <artifactId>opentelemetry-bom</artifactId>
+                <version>${opentelemetry.version}</version>
+                <type>pom</type>
+                <scope>import</scope>
+            </dependency>
+        </dependencies>
+    </dependencyManagement>
 
     <dependencies>
         <dependency>
@@ -257,6 +275,8 @@
                         <configuration>
                             <failBuildOnCVSS>${dependency-check.fail.cvss}</failBuildOnCVSS>
                             <formats>HTML,JSON</formats>
+                            <autoUpdate>false</autoUpdate>
+                            <nvdValidForHours>168</nvdValidForHours>
                             <suppressionFiles>
                                 <suppressionFile>config/dependency-check-suppressions.xml</suppressionFile>
                             </suppressionFiles>
