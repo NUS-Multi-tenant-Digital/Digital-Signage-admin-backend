@@ -28,6 +28,13 @@ public class RedisRegistrationPendingStore implements RegistrationPendingStore {
         return organizationCode.trim().toLowerCase(Locale.ROOT);
     }
 
+    private static String sanitizeForLog(String value) {
+        if (value == null) {
+            return null;
+        }
+        return value.replace('\n', '_').replace('\r', '_');
+    }
+
     @Override
     public boolean orgCodeReservedByOther(String organizationCode, String normalizedEmail) {
         String owner = redis.opsForValue().get(ORG_PREFIX + normOrg(organizationCode));
@@ -78,7 +85,7 @@ public class RedisRegistrationPendingStore implements RegistrationPendingStore {
             }
             return Optional.of(p);
         } catch (Exception e) {
-            log.warn("Corrupt pending registration for {}", normalizedEmail, e);
+            log.warn("Corrupt pending registration for {}", sanitizeForLog(normalizedEmail), e);
             redis.delete(EMAIL_PREFIX + normalizedEmail);
             return Optional.empty();
         }
