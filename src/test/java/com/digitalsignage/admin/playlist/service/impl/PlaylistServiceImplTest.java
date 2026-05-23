@@ -9,7 +9,6 @@ import com.digitalsignage.admin.entity.Organization;
 import com.digitalsignage.admin.entity.Playlist;
 import com.digitalsignage.admin.entity.PlaylistItem;
 import com.digitalsignage.admin.media.repository.MediaRepository;
-import com.digitalsignage.admin.entity.PlaylistItem;
 import com.digitalsignage.admin.playlist.dto.CreatePlaylistRequest;
 import com.digitalsignage.admin.playlist.dto.PlaylistItemRequest;
 import com.digitalsignage.admin.playlist.dto.PlaylistResponse;
