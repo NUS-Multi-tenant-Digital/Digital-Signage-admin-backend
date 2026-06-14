@@ -17,6 +17,7 @@ public class ActiveConfigResponse {
     private LocalDateTime scheduleStart;
     private LocalDateTime scheduleEnd;
     private Integer priority;
+    private Boolean emergencyOverride;
     private LayoutPayload layout;
     private PlaylistPayload playlist;
 

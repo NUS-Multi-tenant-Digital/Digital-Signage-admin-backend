@@ -2,6 +2,7 @@ package com.digitalsignage.admin.device.service;
 
 import com.digitalsignage.admin.common.enums.ScheduleStatus;
 import com.digitalsignage.admin.device.dto.ActiveConfigResponse;
+import com.digitalsignage.admin.emergency.EmergencyOverrideConstants;
 import com.digitalsignage.admin.entity.Layout;
 import com.digitalsignage.admin.entity.LayoutRegion;
 import com.digitalsignage.admin.entity.LayoutRegionComponent;
@@ -54,6 +55,7 @@ public class ActiveConfigService {
                 .scheduleStart(schedule.getStartDatetime())
                 .scheduleEnd(schedule.getEndDatetime())
                 .priority(schedule.getPriority())
+                .emergencyOverride(EmergencyOverrideConstants.isEmergencyScheduleName(schedule.getName()))
                 .layout(toLayoutPayload(layout, regions))
                 .playlist(toPlaylistPayload(schedule.getPlaylist().getId(), schedule.getPlaylist().getName(), items))
                 .build());

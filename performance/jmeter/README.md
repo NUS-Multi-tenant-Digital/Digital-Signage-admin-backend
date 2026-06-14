@@ -44,6 +44,12 @@ java -jar target\*.jar --spring.profiles.active=jmeter
 
 Reports: `target\jmeter-auth\report\index.html`, `target\jmeter-device\report\index.html`.
 
+### Viewing the HTML dashboard (GitHub Artifact)
+
+1. Download artifact **`jmeter-reports`** and **extract the whole ZIP** (do not open `index.html` inside the ZIP directly).
+2. Open **`jmeter-auth/report/index.html`** or **`jmeter-device/report/index.html`** in a browser.
+3. The report needs sibling folders (`content/`, `sbadmin2-1.0.7/`, etc.). If you only copy `index.html`, you will see plain text with no charts or statistics tables.
+
 ## Variables
 
 | Property | Default | Description |

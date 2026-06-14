@@ -9,6 +9,7 @@ on:
       - main
 
 jobs:
+  # Fast style gate so PR authors get feedback early.
   lint:
     name: Lint (Checkstyle)
     runs-on: ubuntu-latest
@@ -26,6 +27,7 @@ jobs:
       - name: Checkstyle
         run: mvn -s .github/maven-ci-settings.xml -B checkstyle:check
 
+  # Main validation gate: compile, unit tests, then package.
   build-and-test:
     name: Build & Test
     runs-on: ubuntu-latest
@@ -46,6 +48,7 @@ jobs:
       - name: Package
         run: mvn -s .github/maven-ci-settings.xml -B package -DskipTests
 
+  # Build container only after quality and tests are green.
   docker-build:
     name: Docker Build
     runs-on: ubuntu-latest

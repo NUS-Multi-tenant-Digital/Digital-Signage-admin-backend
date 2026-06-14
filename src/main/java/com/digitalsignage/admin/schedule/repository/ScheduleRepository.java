@@ -6,6 +6,7 @@ import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
+import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Optional;
 
@@ -35,6 +36,18 @@ public interface ScheduleRepository extends JpaRepository<Schedule, Long> {
             + "LEFT JOIN FETCH s.screen LEFT JOIN FETCH s.screenGroup "
             + "WHERE s.organization.id = :orgId")
     List<Schedule> fetchAllForOrganization(@Param("orgId") Long orgId);
+
+    @Query("SELECT DISTINCT s FROM Schedule s JOIN FETCH s.layout JOIN FETCH s.playlist "
+            + "LEFT JOIN FETCH s.screen LEFT JOIN FETCH s.screenGroup "
+            + "WHERE s.organization.id = :orgId "
+            + "AND s.name LIKE CONCAT(:namePrefix, '%') "
+            + "AND s.status = 'ACTIVE' "
+            + "AND s.startDatetime <= :now AND s.endDatetime > :now "
+            + "ORDER BY s.updatedAt DESC")
+    List<Schedule> findActiveEmergencySchedules(
+            @Param("orgId") Long orgId,
+            @Param("namePrefix") String namePrefix,
+            @Param("now") LocalDateTime now);
 
     boolean existsByLayout_Id(Long layoutId);
 
