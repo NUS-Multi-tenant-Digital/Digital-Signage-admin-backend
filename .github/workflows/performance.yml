@@ -112,10 +112,8 @@ jobs:
         with:
           name: jmeter-reports
           path: |
-            target/jmeter-auth/report/
-            target/jmeter-device/report/
-            target/jmeter-auth/results.jtl
-            target/jmeter-device/results.jtl
+            target/jmeter-auth/
+            target/jmeter-device/
           if-no-files-found: warn
 
       - name: Upload app log
