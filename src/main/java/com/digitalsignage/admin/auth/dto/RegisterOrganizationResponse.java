@@ -10,6 +10,6 @@ import lombok.Getter;
 public class RegisterOrganizationResponse {
 
     private final Long organizationId;
-    private final String adminUsername;
+    private final String username;
     private final String message;
 }

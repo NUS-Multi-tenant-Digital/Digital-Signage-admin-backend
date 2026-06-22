@@ -6,6 +6,7 @@ import com.digitalsignage.admin.auth.dto.RefreshTokenRequest;
 import com.digitalsignage.admin.auth.dto.RegisterOrganizationRequest;
 import com.digitalsignage.admin.auth.dto.RegisterOrganizationResponse;
 import com.digitalsignage.admin.auth.dto.VerifyEmailRequest;
+import com.digitalsignage.admin.auth.dto.VerifyEmailResponse;
 import com.digitalsignage.admin.auth.service.AuthService;
 import com.digitalsignage.admin.auth.service.RegistrationService;
 import com.digitalsignage.admin.common.api.ApiResponse;
@@ -41,8 +42,7 @@ public class AuthController {
     }
 
     @PostMapping("/verify-email")
-    public ApiResponse<Void> verifyEmail(@Valid @RequestBody VerifyEmailRequest request) {
-        registrationService.verifyEmail(request);
-        return ApiResponse.ok();
+    public ApiResponse<VerifyEmailResponse> verifyEmail(@Valid @RequestBody VerifyEmailRequest request) {
+        return ApiResponse.ok(registrationService.verifyEmail(request));
     }
 }

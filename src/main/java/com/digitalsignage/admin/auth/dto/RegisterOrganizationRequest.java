@@ -11,7 +11,8 @@ import lombok.Setter;
 @Setter
 public class RegisterOrganizationRequest {
 
-    @NotBlank(message = "organizationName is required")
+    private RegistrationType registrationType;
+
     @Size(max = 255)
     private String organizationName;
 
@@ -24,16 +25,16 @@ public class RegisterOrganizationRequest {
             message = "organizationCode must be lowercase letters, digits, optional interior hyphens")
     private String organizationCode;
 
-    @NotBlank(message = "adminUsername is required")
+    @NotBlank(message = "username is required")
     @Size(min = 2, max = 64)
-    private String adminUsername;
+    private String username;
 
-    @NotBlank(message = "adminPassword is required")
+    @NotBlank(message = "password is required")
     @Size(min = 8, max = 128)
-    private String adminPassword;
+    private String password;
 
-    @NotBlank(message = "adminEmail is required")
-    @Email(message = "adminEmail must be a valid email")
+    @NotBlank(message = "email is required")
+    @Email(message = "email must be a valid email")
     @Size(max = 255)
-    private String adminEmail;
+    private String email;
 }

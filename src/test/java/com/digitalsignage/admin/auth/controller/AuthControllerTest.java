@@ -3,6 +3,7 @@ package com.digitalsignage.admin.auth.controller;
 import com.digitalsignage.admin.auth.dto.LoginResponse;
 import com.digitalsignage.admin.auth.dto.RegisterOrganizationRequest;
 import com.digitalsignage.admin.auth.dto.RegisterOrganizationResponse;
+import com.digitalsignage.admin.auth.dto.VerifyEmailResponse;
 import com.digitalsignage.admin.auth.service.AuthService;
 import com.digitalsignage.admin.auth.service.RegistrationService;
 import com.digitalsignage.admin.common.enums.UserRole;
@@ -20,7 +21,6 @@ import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.web.servlet.MockMvc;
 
 import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.Mockito.doNothing;
 import static org.mockito.Mockito.when;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
@@ -120,7 +120,7 @@ class AuthControllerTest {
     void register_returnsOk() throws Exception {
         RegisterOrganizationResponse body = RegisterOrganizationResponse.builder()
                 .organizationId(null)
-                .adminUsername("owner")
+                .username("owner")
                 .message("verify email before login")
                 .build();
         when(registrationService.registerOrganization(any(RegisterOrganizationRequest.class))).thenReturn(body);
@@ -130,22 +130,32 @@ class AuthControllerTest {
                         .content(objectMapper.writeValueAsString(java.util.Map.of(
                                 "organizationName", "Acme",
                                 "organizationCode", "acme-corp",
-                                "adminUsername", "owner",
-                                "adminPassword", "Secret123!",
-                                "adminEmail", "owner@acme.com"))))
+                                "username", "owner",
+                                "password", "Secret123!",
+                                "email", "owner@acme.com"))))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.data.organizationId").doesNotExist())
-                .andExpect(jsonPath("$.data.adminUsername").value("owner"));
+                .andExpect(jsonPath("$.data.username").value("owner"));
     }
 
     @Test
     void verifyEmail_returnsOk() throws Exception {
-        doNothing().when(registrationService).verifyEmail(any());
+        VerifyEmailResponse body = VerifyEmailResponse.builder()
+                .username("owner")
+                .role(UserRole.VIEWER)
+                .organizationId(10L)
+                .organizationCode("acme-corp")
+                .build();
+        when(registrationService.verifyEmail(any())).thenReturn(body);
 
         mockMvc.perform(post("/api/admin/auth/verify-email")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("{\"email\":\"owner@acme.com\",\"code\":\"123456\"}"))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$.code").value(200));
+                .andExpect(jsonPath("$.code").value(200))
+                .andExpect(jsonPath("$.data.username").value("owner"))
+                .andExpect(jsonPath("$.data.role").value("VIEWER"))
+                .andExpect(jsonPath("$.data.organizationId").value(10))
+                .andExpect(jsonPath("$.data.organizationCode").value("acme-corp"));
     }
 }

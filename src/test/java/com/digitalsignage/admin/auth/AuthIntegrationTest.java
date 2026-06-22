@@ -27,6 +27,7 @@ import java.util.Map;
 import java.util.UUID;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.hamcrest.Matchers.startsWith;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
@@ -204,11 +205,11 @@ class AuthIntegrationTest {
                         .content(objectMapper.writeValueAsString(Map.of(
                                 "organizationName", "New Org",
                                 "organizationCode", code,
-                                "adminUsername", username,
-                                "adminPassword", password,
-                                "adminEmail", username + "@example.com"))))
+                                "username", username,
+                                "password", password,
+                                "email", username + "@example.com"))))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$.data.adminUsername").value(username));
+                .andExpect(jsonPath("$.data.username").value(username));
 
         mockMvc.perform(post(LOGIN_PATH)
                         .contentType(MediaType.APPLICATION_JSON)
@@ -222,33 +223,126 @@ class AuthIntegrationTest {
         String orgCode = "rg2" + UUID.randomUUID().toString().replace("-", "").substring(0, 11);
         String username = "adm2_" + orgCode;
         String password = "Secret123!";
-        String adminEmail = username + "@example.com";
+        String email = username + "@example.com";
         mockMvc.perform(post(REGISTER_PATH)
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(Map.of(
+                                "registrationType", "CREATE_ORGANIZATION",
                                 "organizationName", "Other Org",
                                 "organizationCode", orgCode,
-                                "adminUsername", username,
-                                "adminPassword", password,
-                                "adminEmail", adminEmail))))
+                                "username", username,
+                                "password", password,
+                                "email", email))))
                 .andExpect(status().isOk());
 
-        String verifyCode = registrationPendingStore.findByEmail(adminEmail.toLowerCase())
+        String verifyCode = registrationPendingStore.findByEmail(email.toLowerCase())
                 .orElseThrow()
                 .verificationCode();
 
         mockMvc.perform(post(VERIFY_PATH)
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(Map.of(
-                                "email", adminEmail,
+                                "email", email,
                                 "code", verifyCode))))
-                .andExpect(status().isOk());
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.data.role").value("VIEWER"))
+                .andExpect(jsonPath("$.data.organizationCode").value(orgCode));
 
         mockMvc.perform(post(LOGIN_PATH)
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(Map.of("username", username, "password", password))))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$.data.username").value(username));
+                .andExpect(jsonPath("$.data.username").value(username))
+                .andExpect(jsonPath("$.data.role").value("VIEWER"));
+    }
+
+    @Test
+    void join_verify_login_returns200() throws Exception {
+        String username = "join_" + UUID.randomUUID().toString().replace("-", "").substring(0, 12);
+        String password = "Secret123!";
+        String email = username + "@example.com";
+        mockMvc.perform(post(REGISTER_PATH)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(Map.of(
+                                "registrationType", "JOIN_ORGANIZATION",
+                                "organizationCode", organization.getCode(),
+                                "username", username,
+                                "password", password,
+                                "email", email))))
+                .andExpect(status().isOk());
+
+        String verifyCode = registrationPendingStore.findByEmail(email.toLowerCase())
+                .orElseThrow()
+                .verificationCode();
+
+        mockMvc.perform(post(VERIFY_PATH)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(Map.of(
+                                "email", email,
+                                "code", verifyCode))))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.data.username").value(username))
+                .andExpect(jsonPath("$.data.role").value("VIEWER"))
+                .andExpect(jsonPath("$.data.organizationId").value(organization.getId().intValue()))
+                .andExpect(jsonPath("$.data.organizationCode").value(organization.getCode()));
+
+        mockMvc.perform(post(LOGIN_PATH)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(Map.of("username", username, "password", password))))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.data.role").value("VIEWER"));
+    }
+
+    @Test
+    void join_usernameConflict_verifyUsesMemberCode() throws Exception {
+        String username = "it_admin";
+        String password = "Secret123!";
+        String email = "join_conflict_" + UUID.randomUUID() + "@example.com";
+        mockMvc.perform(post(REGISTER_PATH)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(Map.of(
+                                "registrationType", "JOIN_ORGANIZATION",
+                                "organizationCode", organization.getCode(),
+                                "username", username,
+                                "password", password,
+                                "email", email))))
+                .andExpect(status().isOk());
+
+        String verifyCode = registrationPendingStore.findByEmail(email.toLowerCase())
+                .orElseThrow()
+                .verificationCode();
+
+        MvcResult verifyResult = mockMvc.perform(post(VERIFY_PATH)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(Map.of(
+                                "email", email,
+                                "code", verifyCode))))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.data.username", startsWith("it_admin-")))
+                .andReturn();
+
+        JsonNode verifyBody = objectMapper.readTree(verifyResult.getResponse().getContentAsString());
+        String resolvedUsername = verifyBody.path("data").path("username").asText();
+
+        mockMvc.perform(post(LOGIN_PATH)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(Map.of("username", resolvedUsername, "password", password))))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.data.role").value("VIEWER"));
+    }
+
+    @Test
+    void join_unknownOrganization_returns404() throws Exception {
+        mockMvc.perform(post(REGISTER_PATH)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(Map.of(
+                                "registrationType", "JOIN_ORGANIZATION",
+                                "organizationCode", "missing-" + UUID.randomUUID(),
+                                "username", "viewer_missing",
+                                "password", "Secret123!",
+                                "email", "viewer_missing@example.com"))))
+                .andExpect(status().isNotFound())
+                .andExpect(jsonPath("$.code").value(404));
     }
 
     @Test
@@ -257,15 +351,15 @@ class AuthIntegrationTest {
         String body1 = objectMapper.writeValueAsString(Map.of(
                 "organizationName", "Dup Org",
                 "organizationCode", code,
-                "adminUsername", "user_a_" + code,
-                "adminPassword", "Secret123!",
-                "adminEmail", "a_" + code + "@example.com"));
+                "username", "user_a_" + code,
+                "password", "Secret123!",
+                "email", "a_" + code + "@example.com"));
         String body2 = objectMapper.writeValueAsString(Map.of(
                 "organizationName", "Dup Org Two",
                 "organizationCode", code,
-                "adminUsername", "user_b_" + code,
-                "adminPassword", "Secret123!",
-                "adminEmail", "b_" + code + "@example.com"));
+                "username", "user_b_" + code,
+                "password", "Secret123!",
+                "email", "b_" + code + "@example.com"));
 
         mockMvc.perform(post(REGISTER_PATH).contentType(MediaType.APPLICATION_JSON).content(body1))
                 .andExpect(status().isOk());
