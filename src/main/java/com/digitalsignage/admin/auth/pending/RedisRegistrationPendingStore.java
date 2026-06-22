@@ -1,5 +1,6 @@
 package com.digitalsignage.admin.auth.pending;
 
+import com.digitalsignage.admin.auth.dto.RegistrationType;
 import com.digitalsignage.admin.common.util.LogSanitizer;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import lombok.RequiredArgsConstructor;
@@ -42,22 +43,25 @@ public class RedisRegistrationPendingStore implements RegistrationPendingStore {
 
     @Override
     public void save(PendingRegistration registration, Duration ttl) {
-        String emailKey = normEmail(registration.adminEmail());
+        String emailKey = normEmail(registration.email());
         removeByEmailKey(emailKey);
 
         long expiresAt = System.currentTimeMillis() + ttl.toMillis();
         PendingRegistration toStore = new PendingRegistration(
                 registration.organizationName(),
                 registration.organizationCode(),
-                registration.adminUsername(),
+                registration.username(),
                 registration.passwordHash(),
-                registration.adminEmail(),
+                registration.email(),
                 registration.verificationCode(),
-                expiresAt);
+                expiresAt,
+                registration.registrationType());
         try {
             String json = objectMapper.writeValueAsString(toStore);
             redis.opsForValue().set(EMAIL_PREFIX + emailKey, json, ttl);
-            redis.opsForValue().set(ORG_PREFIX + normOrg(toStore.organizationCode()), emailKey, ttl);
+            if (toStore.registrationTypeOrDefault() == RegistrationType.CREATE_ORGANIZATION) {
+                redis.opsForValue().set(ORG_PREFIX + normOrg(toStore.organizationCode()), emailKey, ttl);
+            }
             redis.opsForValue().set(CODE_PREFIX + toStore.verificationCode(), emailKey, ttl);
         } catch (Exception e) {
             remove(toStore);
@@ -87,9 +91,11 @@ public class RedisRegistrationPendingStore implements RegistrationPendingStore {
 
     @Override
     public void remove(PendingRegistration registration) {
-        String emailKey = normEmail(registration.adminEmail());
+        String emailKey = normEmail(registration.email());
         redis.delete(EMAIL_PREFIX + emailKey);
-        redis.delete(ORG_PREFIX + normOrg(registration.organizationCode()));
+        if (registration.registrationTypeOrDefault() == RegistrationType.CREATE_ORGANIZATION) {
+            redis.delete(ORG_PREFIX + normOrg(registration.organizationCode()));
+        }
         redis.delete(CODE_PREFIX + registration.verificationCode());
     }
 

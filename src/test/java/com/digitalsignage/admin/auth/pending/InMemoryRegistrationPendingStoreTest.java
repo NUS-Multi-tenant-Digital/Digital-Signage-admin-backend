@@ -70,7 +70,8 @@ class InMemoryRegistrationPendingStoreTest {
                 "hash",
                 "admin@test.local",
                 "123456",
-                expiresAt);
+                expiresAt,
+                null);
     }
 
     private static void putEmailJson(InMemoryRegistrationPendingStore store, String emailKey, String json)

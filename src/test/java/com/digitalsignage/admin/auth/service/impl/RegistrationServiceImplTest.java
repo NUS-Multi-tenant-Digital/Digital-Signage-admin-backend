@@ -3,15 +3,23 @@ package com.digitalsignage.admin.auth.service.impl;
 import com.digitalsignage.admin.auth.config.RegistrationProperties;
 import com.digitalsignage.admin.auth.dto.RegisterOrganizationRequest;
 import com.digitalsignage.admin.auth.dto.RegisterOrganizationResponse;
+import com.digitalsignage.admin.auth.dto.RegistrationType;
 import com.digitalsignage.admin.auth.dto.VerifyEmailRequest;
+import com.digitalsignage.admin.auth.dto.VerifyEmailResponse;
 import com.digitalsignage.admin.auth.mail.EmailVerificationMailer;
 import com.digitalsignage.admin.auth.pending.PendingRegistration;
 import com.digitalsignage.admin.auth.pending.RegistrationPendingStore;
 import com.digitalsignage.admin.auth.repository.SysUserRepository;
+import com.digitalsignage.admin.common.enums.OrganizationStatus;
+import com.digitalsignage.admin.common.enums.SysUserStatus;
+import com.digitalsignage.admin.common.enums.UserRole;
 import com.digitalsignage.admin.common.exception.BusinessException;
+import com.digitalsignage.admin.entity.Organization;
+import com.digitalsignage.admin.entity.SysUser;
 import com.digitalsignage.admin.user.repository.OrganizationRepository;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
+import org.mockito.ArgumentCaptor;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
@@ -54,7 +62,7 @@ class RegistrationServiceImplTest {
 
     @Test
     void registerOrganization_duplicateOrgCode_throws409() {
-        RegisterOrganizationRequest request = sampleRegisterRequest();
+        RegisterOrganizationRequest request = sampleCreateRequest();
 
         when(organizationRepository.existsByCode("acme")).thenReturn(true);
 
@@ -65,8 +73,8 @@ class RegistrationServiceImplTest {
     }
 
     @Test
-    void registerOrganization_success() {
-        RegisterOrganizationRequest request = sampleRegisterRequest();
+    void registerOrganization_createSuccess() {
+        RegisterOrganizationRequest request = sampleCreateRequest();
 
         when(organizationRepository.existsByCode("acme")).thenReturn(false);
         when(sysUserRepository.existsByUsername("admin")).thenReturn(false);
@@ -78,21 +86,59 @@ class RegistrationServiceImplTest {
         RegisterOrganizationResponse response = registrationService.registerOrganization(request);
 
         assertThat(response.getOrganizationId()).isNull();
-        assertThat(response.getAdminUsername()).isEqualTo("admin");
-        verify(pendingStore).save(any(PendingRegistration.class), eq(Duration.ofHours(48)));
+        assertThat(response.getUsername()).isEqualTo("admin");
+        ArgumentCaptor<PendingRegistration> captor = ArgumentCaptor.forClass(PendingRegistration.class);
+        verify(pendingStore).save(captor.capture(), eq(Duration.ofHours(48)));
+        assertThat(captor.getValue().registrationType()).isEqualTo(RegistrationType.CREATE_ORGANIZATION);
         verify(emailVerificationMailer).sendOrganizationAdminVerification(eq("admin@acme.com"), any());
     }
 
     @Test
+    void registerOrganization_joinOrgNotFound_throws404() {
+        RegisterOrganizationRequest request = sampleJoinRequest();
+
+        when(organizationRepository.findByCode("acme")).thenReturn(Optional.empty());
+
+        assertThatThrownBy(() -> registrationService.registerOrganization(request))
+                .isInstanceOf(BusinessException.class)
+                .hasFieldOrPropertyWithValue("code", 404);
+    }
+
+    @Test
+    void registerOrganization_joinSuspendedOrg_throws403() {
+        RegisterOrganizationRequest request = sampleJoinRequest();
+        Organization org = activeOrganization("acme");
+        org.setStatus(OrganizationStatus.SUSPENDED);
+
+        when(organizationRepository.findByCode("acme")).thenReturn(Optional.of(org));
+
+        assertThatThrownBy(() -> registrationService.registerOrganization(request))
+                .isInstanceOf(BusinessException.class)
+                .hasFieldOrPropertyWithValue("code", 403);
+    }
+
+    @Test
+    void registerOrganization_joinSuccess() {
+        RegisterOrganizationRequest request = sampleJoinRequest();
+        Organization org = activeOrganization("acme");
+
+        when(organizationRepository.findByCode("acme")).thenReturn(Optional.of(org));
+        when(pendingStore.verificationCodeTaken(any())).thenReturn(false);
+        when(passwordEncoder.encode("Secret123!")).thenReturn("hashed");
+        when(registrationProperties.getVerificationTokenTtl()).thenReturn(Duration.ofHours(48));
+
+        RegisterOrganizationResponse response = registrationService.registerOrganization(request);
+
+        assertThat(response.getUsername()).isEqualTo("viewer1");
+        ArgumentCaptor<PendingRegistration> captor = ArgumentCaptor.forClass(PendingRegistration.class);
+        verify(pendingStore).save(captor.capture(), eq(Duration.ofHours(48)));
+        assertThat(captor.getValue().registrationType()).isEqualTo(RegistrationType.JOIN_ORGANIZATION);
+        verify(sysUserRepository, never()).existsByUsername(any());
+    }
+
+    @Test
     void verifyEmail_wrongCode_throws400() {
-        PendingRegistration pending = new PendingRegistration(
-                "Acme Inc",
-                "acme",
-                "admin",
-                "hashed",
-                "admin@acme.com",
-                "123456",
-                System.currentTimeMillis() + 3600_000);
+        PendingRegistration pending = samplePending(RegistrationType.CREATE_ORGANIZATION);
 
         VerifyEmailRequest request = new VerifyEmailRequest();
         request.setEmail("admin@acme.com");
@@ -119,13 +165,99 @@ class RegistrationServiceImplTest {
                 .hasFieldOrPropertyWithValue("code", 400);
     }
 
-    private static RegisterOrganizationRequest sampleRegisterRequest() {
+    @Test
+    void verifyEmail_createOrganization_assignsViewerRole() {
+        PendingRegistration pending = samplePending(RegistrationType.CREATE_ORGANIZATION);
+
+        VerifyEmailRequest request = new VerifyEmailRequest();
+        request.setEmail("admin@acme.com");
+        request.setCode("123456");
+
+        when(pendingStore.findByEmail("admin@acme.com")).thenReturn(Optional.of(pending));
+        when(organizationRepository.existsByCode("acme")).thenReturn(false);
+        when(sysUserRepository.existsByUsername("admin")).thenReturn(false);
+        when(organizationRepository.save(any(Organization.class))).thenAnswer(invocation -> {
+            Organization org = invocation.getArgument(0);
+            org.setId(99L);
+            return org;
+        });
+        when(sysUserRepository.save(any(SysUser.class))).thenAnswer(invocation -> invocation.getArgument(0));
+
+        VerifyEmailResponse response = registrationService.verifyEmail(request);
+
+        assertThat(response.getUsername()).isEqualTo("admin");
+        assertThat(response.getRole()).isEqualTo(UserRole.VIEWER);
+        assertThat(response.getOrganizationId()).isEqualTo(99L);
+        assertThat(response.getOrganizationCode()).isEqualTo("acme");
+
+        ArgumentCaptor<SysUser> userCaptor = ArgumentCaptor.forClass(SysUser.class);
+        verify(sysUserRepository).save(userCaptor.capture());
+        assertThat(userCaptor.getValue().getRole()).isEqualTo(UserRole.VIEWER);
+        assertThat(userCaptor.getValue().getStatus()).isEqualTo(SysUserStatus.ACTIVE);
+    }
+
+    @Test
+    void verifyEmail_joinOrganization_allocatesMemberCodeWhenUsernameTaken() {
+        PendingRegistration pending = samplePending(RegistrationType.JOIN_ORGANIZATION);
+        Organization org = activeOrganization("acme");
+
+        VerifyEmailRequest request = new VerifyEmailRequest();
+        request.setEmail("admin@acme.com");
+        request.setCode("123456");
+
+        when(pendingStore.findByEmail("admin@acme.com")).thenReturn(Optional.of(pending));
+        when(organizationRepository.findByCode("acme")).thenReturn(Optional.of(org));
+        when(sysUserRepository.existsByUsername("admin")).thenReturn(true, false);
+        when(sysUserRepository.save(any(SysUser.class))).thenAnswer(invocation -> invocation.getArgument(0));
+
+        VerifyEmailResponse response = registrationService.verifyEmail(request);
+
+        assertThat(response.getUsername()).startsWith("admin-");
+        assertThat(response.getUsername()).hasSize("admin-".length() + 4);
+        assertThat(response.getRole()).isEqualTo(UserRole.VIEWER);
+        assertThat(response.getOrganizationId()).isEqualTo(1L);
+        assertThat(response.getOrganizationCode()).isEqualTo("acme");
+    }
+
+    private static RegisterOrganizationRequest sampleCreateRequest() {
         RegisterOrganizationRequest request = new RegisterOrganizationRequest();
+        request.setRegistrationType(RegistrationType.CREATE_ORGANIZATION);
         request.setOrganizationName("Acme Inc");
-        request.setOrganizationCode("ACME");
-        request.setAdminUsername("admin");
-        request.setAdminPassword("Secret123!");
-        request.setAdminEmail("admin@acme.com");
+        request.setOrganizationCode("acme");
+        request.setUsername("admin");
+        request.setPassword("Secret123!");
+        request.setEmail("admin@acme.com");
         return request;
+    }
+
+    private static RegisterOrganizationRequest sampleJoinRequest() {
+        RegisterOrganizationRequest request = new RegisterOrganizationRequest();
+        request.setRegistrationType(RegistrationType.JOIN_ORGANIZATION);
+        request.setOrganizationCode("acme");
+        request.setUsername("viewer1");
+        request.setPassword("Secret123!");
+        request.setEmail("viewer1@acme.com");
+        return request;
+    }
+
+    private static PendingRegistration samplePending(RegistrationType type) {
+        return new PendingRegistration(
+                "Acme Inc",
+                "acme",
+                "admin",
+                "hashed",
+                "admin@acme.com",
+                "123456",
+                System.currentTimeMillis() + 3600_000,
+                type);
+    }
+
+    private static Organization activeOrganization(String code) {
+        Organization org = new Organization();
+        org.setId(1L);
+        org.setName("Acme Inc");
+        org.setCode(code);
+        org.setStatus(OrganizationStatus.ACTIVE);
+        return org;
     }
 }

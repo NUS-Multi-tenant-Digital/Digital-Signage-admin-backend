@@ -1,5 +1,6 @@
 package com.digitalsignage.admin.auth.pending;
 
+import com.digitalsignage.admin.auth.dto.RegistrationType;
 import com.digitalsignage.admin.common.util.LogSanitizer;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import lombok.RequiredArgsConstructor;
@@ -41,22 +42,25 @@ public class InMemoryRegistrationPendingStore implements RegistrationPendingStor
 
     @Override
     public void save(PendingRegistration registration, Duration ttl) {
-        String emailKey = normEmail(registration.adminEmail());
+        String emailKey = normEmail(registration.email());
         removeByEmailKeyIfPresent(emailKey);
 
         long expiresAt = System.currentTimeMillis() + ttl.toMillis();
         PendingRegistration toStore = new PendingRegistration(
                 registration.organizationName(),
                 registration.organizationCode(),
-                registration.adminUsername(),
+                registration.username(),
                 registration.passwordHash(),
-                registration.adminEmail(),
+                registration.email(),
                 registration.verificationCode(),
-                expiresAt);
+                expiresAt,
+                registration.registrationType());
         try {
             String json = objectMapper.writeValueAsString(toStore);
             emailToJson.put(emailKey, json);
-            orgCodeToEmail.put(normOrg(toStore.organizationCode()), emailKey);
+            if (toStore.registrationTypeOrDefault() == RegistrationType.CREATE_ORGANIZATION) {
+                orgCodeToEmail.put(normOrg(toStore.organizationCode()), emailKey);
+            }
             codeToEmail.put(toStore.verificationCode(), emailKey);
         } catch (Exception e) {
             remove(toStore);
@@ -86,9 +90,11 @@ public class InMemoryRegistrationPendingStore implements RegistrationPendingStor
 
     @Override
     public void remove(PendingRegistration registration) {
-        String emailKey = normEmail(registration.adminEmail());
+        String emailKey = normEmail(registration.email());
         emailToJson.remove(emailKey);
-        orgCodeToEmail.remove(normOrg(registration.organizationCode()));
+        if (registration.registrationTypeOrDefault() == RegistrationType.CREATE_ORGANIZATION) {
+            orgCodeToEmail.remove(normOrg(registration.organizationCode()));
+        }
         codeToEmail.remove(registration.verificationCode());
     }
 
@@ -99,7 +105,9 @@ public class InMemoryRegistrationPendingStore implements RegistrationPendingStor
         }
         try {
             PendingRegistration old = objectMapper.readValue(json, PendingRegistration.class);
-            orgCodeToEmail.remove(normOrg(old.organizationCode()));
+            if (old.registrationTypeOrDefault() == RegistrationType.CREATE_ORGANIZATION) {
+                orgCodeToEmail.remove(normOrg(old.organizationCode()));
+            }
             codeToEmail.remove(old.verificationCode());
         } catch (Exception ignored) {
             // drop
