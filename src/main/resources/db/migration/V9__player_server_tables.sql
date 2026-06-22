@@ -110,5 +110,5 @@ ALTER TABLE device_event_log ADD COLUMN error_code VARCHAR(64) NULL;
 ALTER TABLE device_event_log ADD COLUMN error_message VARCHAR(512) NULL;
 ALTER TABLE device_event_log ADD COLUMN extra_json TEXT NULL;
 ALTER TABLE device_event_log ADD COLUMN event_timestamp BIGINT NULL;
-CREATE UNIQUE INDEX IF NOT EXISTS uk_device_event_log_event_id ON device_event_log (event_id);
-CREATE INDEX IF NOT EXISTS idx_device_event_log_screen_timestamp ON device_event_log (screen_id, event_timestamp);
+CREATE UNIQUE INDEX uk_device_event_log_event_id ON device_event_log (event_id);
+CREATE INDEX idx_device_event_log_screen_timestamp ON device_event_log (screen_id, event_timestamp);
