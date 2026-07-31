@@ -62,19 +62,22 @@ jobs:
       - name: Build Docker image
         run: docker build -t digital-signage-admin-backend:${{ github.sha }} .
 
-      # Prefer public.ecr.aws to avoid GHCR/GCR rate limits on trivy-db / trivy-java-db.
+      # OS packages only — avoids large trivy-java-db download failures in CI.
+      # Application/Java dependency CVEs are covered by OWASP Dependency-Check (sast.yml).
       - name: Trivy image scan (table)
         uses: aquasecurity/trivy-action@57a97c7e7821a5776cebc9bb87c984fa69cba8f1 # v0.35.0
         env:
           TRIVY_DB_REPOSITORY: public.ecr.aws/aquasecurity/trivy-db:2,mirror.gcr.io/aquasec/trivy-db:2
-          TRIVY_JAVA_DB_REPOSITORY: public.ecr.aws/aquasecurity/trivy-java-db:1,mirror.gcr.io/aquasec/trivy-java-db:1
         with:
           image-ref: digital-signage-admin-backend:${{ github.sha }}
           format: table
           output: trivy-report.txt
           severity: CRITICAL,HIGH
           ignore-unfixed: true
-          vuln-type: os,library
+          vuln-type: os
+          scanners: vuln
+          # Fat JAR is scanned by Dependency-Check; skipping avoids trivy-java-db download.
+          skip-files: "**/*.jar"
           timeout: "10m0s"
           exit-code: "1"
 
@@ -83,14 +86,15 @@ jobs:
         uses: aquasecurity/trivy-action@57a97c7e7821a5776cebc9bb87c984fa69cba8f1 # v0.35.0
         env:
           TRIVY_DB_REPOSITORY: public.ecr.aws/aquasecurity/trivy-db:2,mirror.gcr.io/aquasec/trivy-db:2
-          TRIVY_JAVA_DB_REPOSITORY: public.ecr.aws/aquasecurity/trivy-java-db:1,mirror.gcr.io/aquasec/trivy-java-db:1
         with:
           image-ref: digital-signage-admin-backend:${{ github.sha }}
           format: sarif
           output: trivy-results.sarif
           severity: CRITICAL,HIGH,MEDIUM
           ignore-unfixed: true
-          vuln-type: os,library
+          vuln-type: os
+          scanners: vuln
+          skip-files: "**/*.jar"
           timeout: "10m0s"
           exit-code: "0"
 
