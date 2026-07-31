@@ -43,11 +43,72 @@ jobs:
           username: ${{ secrets.ACR_USERNAME }}
           password: ${{ secrets.ACR_PASSWORD }}
 
-      - name: Build and push
+      - name: Resolve image refs
+        id: image
+        run: |
+          REF="${{ secrets.ACR_REGISTRY }}/${{ secrets.ACR_NAMESPACE }}/${{ env.IMAGE_NAME }}"
+          echo "ref=${REF}" >> "$GITHUB_OUTPUT"
+          echo "tag_sha=${REF}:${{ github.sha }}" >> "$GITHUB_OUTPUT"
+          echo "tag_latest=${REF}:latest" >> "$GITHUB_OUTPUT"
+
+      # Build locally first so Trivy can scan before anything is pushed to ACR.
+      - name: Build image (local load)
         uses: docker/build-push-action@263435318d21b8e681c14492fe198d362a7d2c83 # v6.18.0
         with:
           context: .
-          push: true
+          load: true
+          push: false
           tags: |
-            ${{ secrets.ACR_REGISTRY }}/${{ secrets.ACR_NAMESPACE }}/${{ env.IMAGE_NAME }}:${{ github.sha }}
-            ${{ secrets.ACR_REGISTRY }}/${{ secrets.ACR_NAMESPACE }}/${{ env.IMAGE_NAME }}:latest
+            ${{ steps.image.outputs.tag_sha }}
+            ${{ steps.image.outputs.tag_latest }}
+
+      # OS packages only — avoids large trivy-java-db download failures in CI.
+      # Application/Java dependency CVEs are covered by OWASP Dependency-Check (sast.yml).
+      - name: Trivy image scan (table)
+        uses: aquasecurity/trivy-action@57a97c7e7821a5776cebc9bb87c984fa69cba8f1 # v0.35.0
+        env:
+          TRIVY_DB_REPOSITORY: public.ecr.aws/aquasecurity/trivy-db:2,mirror.gcr.io/aquasec/trivy-db:2
+        with:
+          image-ref: ${{ steps.image.outputs.tag_sha }}
+          format: table
+          output: trivy-report.txt
+          severity: CRITICAL,HIGH
+          ignore-unfixed: true
+          vuln-type: os
+          scanners: vuln
+          # Fat JAR is scanned by Dependency-Check; skipping avoids trivy-java-db download.
+          skip-files: "**/*.jar"
+          timeout: "10m0s"
+          exit-code: "1"
+
+      - name: Trivy image scan (SARIF)
+        if: always()
+        uses: aquasecurity/trivy-action@57a97c7e7821a5776cebc9bb87c984fa69cba8f1 # v0.35.0
+        env:
+          TRIVY_DB_REPOSITORY: public.ecr.aws/aquasecurity/trivy-db:2,mirror.gcr.io/aquasec/trivy-db:2
+        with:
+          image-ref: ${{ steps.image.outputs.tag_sha }}
+          format: sarif
+          output: trivy-results.sarif
+          severity: CRITICAL,HIGH,MEDIUM
+          ignore-unfixed: true
+          vuln-type: os
+          scanners: vuln
+          skip-files: "**/*.jar"
+          timeout: "10m0s"
+          exit-code: "0"
+
+      - name: Upload Trivy reports
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: trivy-image-report
+          path: |
+            trivy-report.txt
+            trivy-results.sarif
+          if-no-files-found: warn
+
+      - name: Push image to ACR
+        run: |
+          docker push "${{ steps.image.outputs.tag_sha }}"
+          docker push "${{ steps.image.outputs.tag_latest }}"
