@@ -48,7 +48,7 @@ jobs:
       - name: Package
         run: mvn -s .github/maven-ci-settings.xml -B package -DskipTests
 
-  # Build container only after quality and tests are green.
+  # Build container only after quality and tests are green; scan OS/library CVEs with Trivy.
   docker-build:
     name: Docker Build
     runs-on: ubuntu-latest
@@ -61,3 +61,37 @@ jobs:
 
       - name: Build Docker image
         run: docker build -t digital-signage-admin-backend:${{ github.sha }} .
+
+      - name: Trivy image scan (table)
+        uses: aquasecurity/trivy-action@57a97c7e7821a5776cebc9bb87c984fa69cba8f1 # v0.35.0
+        with:
+          image-ref: digital-signage-admin-backend:${{ github.sha }}
+          format: table
+          output: trivy-report.txt
+          severity: CRITICAL,HIGH
+          ignore-unfixed: true
+          vuln-type: os,library
+          exit-code: "1"
+
+      - name: Trivy image scan (SARIF)
+        if: always()
+        uses: aquasecurity/trivy-action@57a97c7e7821a5776cebc9bb87c984fa69cba8f1 # v0.35.0
+        with:
+          image-ref: digital-signage-admin-backend:${{ github.sha }}
+          format: sarif
+          output: trivy-results.sarif
+          severity: CRITICAL,HIGH,MEDIUM
+          ignore-unfixed: true
+          vuln-type: os,library
+          exit-code: "0"
+
+      - name: Upload Trivy reports
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: trivy-image-report
+          path: |
+            trivy-report.txt
+            trivy-results.sarif
+          if-no-files-found: warn
+
