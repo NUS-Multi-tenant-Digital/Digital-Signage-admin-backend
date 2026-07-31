@@ -35,3 +35,14 @@ jobs:
           mvn -s .github/maven-ci-settings.xml -B clean verify
           org.sonarsource.scanner.maven:sonar-maven-plugin:5.6.0.6792:sonar
           -Dsonar.qualitygate.wait=false
+
+      # Surefire + JaCoCo from mvn verify (unit/integration tests on embedded H2).
+      - name: Upload test and coverage reports
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: integration-test-reports
+          path: |
+            target/surefire-reports/
+            target/site/jacoco/
+          if-no-files-found: warn
